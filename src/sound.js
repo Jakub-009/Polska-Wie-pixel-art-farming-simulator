@@ -1,5 +1,5 @@
 // WebAudio: silnik, młocarnia, wiatr, ptaki.
-import {state,$,toast} from './core.js';
+import {state,$,toast,MAXSPEED,active} from './core.js';
 let snd=null;
 function soundInit(){
  try{
@@ -29,7 +29,7 @@ function toggleSound(){
 function updateSound(gas){
  if(!snd)return;
  const {ac,master,engA,engB,engineF,engineG,threshG,windG}=snd,t=ac.currentTime;
- const on=state.playing&&!state.mute;
+ const on=active()&&!state.mute;
  master.gain.setTargetAtTime(on?.30:0,t,.08);
  const speed=Math.abs(state.v)/MAXSPEED;
  // Revs depend on throttle and workload, not solely ground speed.
@@ -42,7 +42,7 @@ function updateSound(gas){
  windG.gain.setTargetAtTime(.016+.008*Math.sin(state.elapsed*.25)**2,t,.3);
 }
 function birdNote(){
- if(!snd||state.mute||!state.playing)return;
+ if(!snd||state.mute||!active())return;
  const {ac,master}=snd,t=ac.currentTime;
  const osc=ac.createOscillator(),v=ac.createGain();osc.type='sine';
  osc.frequency.setValueAtTime(1470,t);osc.frequency.linearRampToValueAtTime(2160,t+.11);osc.frequency.linearRampToValueAtTime(1670,t+.23);
