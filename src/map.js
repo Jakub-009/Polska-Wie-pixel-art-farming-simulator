@@ -104,8 +104,19 @@ function free(x,y,r,o={}){
  return true;
 }
 export const trees=[],shrubs=[],bales=[];
+// Korona drzewa nie może zachodzić na pole: drzewa poza lasem odsuwamy od prostokątów pól o promień korony.
+function clearOfFields(x,y,m){
+ for(let pass=0;pass<2;pass++)for(const R of [...FIELDS,mainField]){
+  if(x>R.x-m&&x<R.x+R.w+m&&y>R.y-m&&y<R.y+R.h+m){
+   const e=[[x-(R.x-m),-1,0],[R.x+R.w+m-x,1,0],[y-(R.y-m),0,-1],[R.y+R.h+m-y,0,1]].sort((a,b)=>a[0]-b[0])[0];
+   x+=e[1]*e[0];y+=e[2]*e[0];
+  }
+ }
+ return [x,y];
+}
 function addTree(x,y,r,type,s=1,o={}){
  s*=TREE_SCALE;
+ if(!WOODS.some(w=>inRect(x,y,w)))[x,y]=clearOfFields(x,y,r*s*.7);
  if(!free(x,y,r*s,o)||roadClearance(x,y)<30)return;
  trees.push({x,y,r,type,s,tag:o.tag||''});
  addCircle(x+1,y+4,7,'tree');

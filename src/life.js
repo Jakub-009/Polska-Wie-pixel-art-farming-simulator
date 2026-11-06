@@ -2,7 +2,7 @@
 // wszyscy mają kolizje i reagują na kombajn gracza (hamują / czekają).
 import {ctx,rect,line,hash,FLD,camera,VIEW,state,RT,clamp,WORLD,LIGHT} from './core.js';
 import {crop} from './world.js';
-import {drawMachineAt,playerObbs,orientedShadow,drawRotated} from './vehicles.js';
+import {drawMachineAt,drawTractorAt,playerObbs,orientedShadow,drawRotated} from './vehicles.js';
 import {MAP,ROADS,pointBlocked,roadClearance} from './map.js';
 import {obb,circle,collide,obbCircle} from './geometry.js';
 // Odległość punktu od obrysu pojazdu gracza (0 = w środku) i wypchnięcie okręgu z obrysu.
@@ -84,19 +84,6 @@ function carTop(g,x,y,col,heading=0){
   rect(s,-8,-16,16,14,'#668d97');rect(s,-7,-14,14,7,'#a1b6ba');
   rect(s,-8,12,16,8,'#637c81');rect(s,-8,24,5,3,'#d2b889');rect(s,3,24,5,3,'#bf9b71');
   rect(s,-8,-29,5,2,'#ecddb6');rect(s,3,-29,5,2,'#e8d4a8');
- });
-}
-function miniTractor(g,x,y,heading=0,working=false){
- if(!nearCam(x,y,64))return;
- orientedShadow(g,x,y,heading,[[17,31,0]],14,'#3b4a3f55');
- drawRotated(g,x,y,heading,s=>{
-  rect(s,-17,-24,7,13,'#2f3531');rect(s,10,-24,7,13,'#2f3531');   // przednie koła
-  rect(s,-18,4,9,24,'#2f3531');rect(s,9,4,9,24,'#2f3531');         // tylne koła
-  for(let t=6;t<26;t+=5){rect(s,-18,t,3,2,'#6d7468');rect(s,15,t,3,2,'#6d7468')}
-  rect(s,-7,-31,14,30,'#98513b');rect(s,-6,-30,12,26,'#c26440');rect(s,-5,-30,10,3,'#d18851'); // maska
-  rect(s,-10,-3,20,26,'#98513b');rect(s,-9,-2,18,24,'#567d7a');rect(s,-7,0,14,16,'#9cb5a5'); // kabina
-  rect(s,-8,22,16,8,'#b4623f');rect(s,-2,29,4,3,'#444a44');       // tył i zaczep
-  if(working){rect(s,-22,31,43,7,'#7c876c')}
  });
 }
 function birds(g,t){
@@ -191,7 +178,7 @@ class Walker{
  draw(){
   const [x,y]=this.pos;
   if(this.kind==='car')carTop(ctx,x,y,this.color,this.heading);
-  else if(this.kind==='tractor')miniTractor(ctx,x,y,this.heading,false);
+  else if(this.kind==='tractor'){if(nearCam(x,y,80))drawTractorAt(ctx,x,y,this.heading,this.steer*.5,this.travel)}
   else if(nearCam(x,y,95))drawMachineAt(ctx,x,y,this.heading,this.steer*.5,this.travel,false);
  }
 }

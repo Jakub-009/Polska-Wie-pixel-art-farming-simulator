@@ -2,7 +2,7 @@
 // 0.4.0: rysowanie tylko widocznego wycinka warstw, dachy i korony nad pojazdami, nakładka debug (F3).
 import {ctx,VIEW,clamp,rect,line,state,camera,fx,FLD,DEBUG,RT} from './core.js';
 import {ground,field,tracks,decorLow,decorHigh} from './world.js';
-import {drawHarvester,drawParkedHeader,playerObbs,drawOtherVehicle,otherObbs} from './vehicles.js';
+import {drawAllVehicles,drawParkedHeader,playerObbs,otherObbs} from './vehicles.js';
 import {drawLivingWorld,drawVillageLife,drawCanopyLife,dynamicColliders} from './life.js';
 import {MAP} from './map.js';
 import {obbCorners} from './geometry.js';
@@ -11,7 +11,7 @@ function blit(cv){
  const sx=Math.max(0,cx),sy=Math.max(0,cy),ex=Math.min(cv.width,cx+VIEW.w),ey=Math.min(cv.height,cy+VIEW.h);
  if(ex>sx&&ey>sy)ctx.drawImage(cv,sx,sy,ex-sx,ey-sy,sx,sy,ex-sx,ey-sy);
 }
-function drawParticles(){for(let p of fx){let k=clamp(p.life/p.max,0,1);ctx.globalAlpha=k*.72;rect(ctx,p.x,p.y,p.size,p.size,p.type==='dust'?'#e9d3a3':'#f4d881');ctx.globalAlpha=1}}
+function drawParticles(){for(let p of fx){let k=clamp(p.life/p.max,0,1);ctx.globalAlpha=k*.72;rect(ctx,p.x,p.y,p.size,p.size,p.type==='dust'?'#e9d3a3':p.type==='grain'?'#f0c453':'#f4d881');ctx.globalAlpha=1}}
 function outline(o,col){
  ctx.strokeStyle=col;ctx.lineWidth=1;ctx.beginPath();
  if(o.shape==='circle')ctx.arc(o.x,o.y,o.r,0,Math.PI*2);
@@ -36,7 +36,7 @@ function drawWorld(){
  line(ctx,FLD.x+FLD.w,FLD.y,FLD.x+FLD.w,FLD.y+FLD.h,'#a8996a');
  blit(tracks);blit(decorLow);
  if(state.parked)drawParkedHeader(ctx,state.parked.x,state.parked.y,state.parked.angle);
- drawOtherVehicle();drawLivingWorld();drawVillageLife();drawParticles();drawHarvester();
+ drawLivingWorld();drawVillageLife();drawAllVehicles();drawParticles();
  blit(decorHigh);drawCanopyLife();
  if(DEBUG.on)drawDebug();
  ctx.restore();

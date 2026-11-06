@@ -45,12 +45,19 @@ Potem otwórz `http://localhost:8000/`. Alternatywnie użyj rozszerzenia Live Se
 | `src/vehicles.js` | Sprite kombajnu, renderer maszyn, obrys kolizji gracza |
 | `src/harvest.js` | Ścinanie pszenicy, ślady i cząsteczki |
 | `src/header.js` | Zdejmowanie i zakładanie hedera (klawisz H) |
+| `src/trailer.js` | Przyczepa, rura wysypowa kombajnu, rozładunek i wysyp |
 | `src/life.js` | Pojazdy NPC na grafie dróg, piesi, zwierzęta |
 | `src/render.js` | Kompozycja klatek, warstwy, nakładka debug |
 | `src/sound.js` | Dźwięki WebAudio |
 | `src/ui.js` | HUD i ekran zakończenia |
 | `src/controls.js` | Klawiatura, dotyk, pauza |
 | `src/main.js` | Stały krok symulacji, kolizje, kamera, restart, diagnostyka |
+
+## Zmiany w 0.5.0 — zboże
+- Kombajn: rozkładana rura wysypowa (U) sięgająca 73 px w bok, poza heder; rozładunek (J). Zbiornik jest teraz realny (0,8 t) — gdy się zapełni, koszenie staje się niemożliwe do czasu rozładunku. Z rozłożoną rurą kombajn jedzie wolniej.
+- Traktor z przyczepą (2,0 t): przyczepa holowana za zaczepem, zaczep/odczep na R, wysyp na E (licznik „MAG.” w HUD). Rozładunek działa tylko, gdy koniec rury jest nad skrzynią przyczepy.
+- Przesiadka V: kombajn z rozładunkiem stoi, gdy jedziesz traktorem (i odwrotnie).
+- Traktor NPC na drodze wygląda tak samo jak grywalny. Drzewa poza lasem nie mają już koron nad polami.
 
 ## Zmiany w 0.4.4
 - Usunięte stare rekwizyty z podwórza (palety, beczki, poidło, stojący traktor).

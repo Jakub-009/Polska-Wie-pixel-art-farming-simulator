@@ -1,6 +1,6 @@
 // Wspólne jednostki, stan symulacji i małe funkcje rysowania.
 // 0.4.0: stały krok czasowy, pauza jako osobny stan, tryb debug, liczniki czasu zamiast modulo klatek.
-export const VERSION='0.4.4';
+export const VERSION='0.5.0';
 export const C=document.querySelector('#game');
 export const ctx=C.getContext('2d',{alpha:false});
 export const VIEW={w:640,h:360,scale:3,zoom:0,maxZoom:0};
@@ -20,13 +20,16 @@ export function shadow(g,x,y,w,h,height=45){const dx=LIGHT.x*height,dy=LIGHT.y*h
 export const keys=new Set();
 // Start: podwórze gospodarstwa, kombajn skierowany na wyjazd (zachód), heder założony.
 export const START={x:1380,y:515,angle:-Math.PI/2};
-export const state={vehicle:'combine',other:{kind:'tractor',x:1295,y:622,angle:0},x:START.x,y:START.y,angle:START.angle,v:0,steer:0,tool:false,headerOn:true,parked:null,tank:0,time:16*60+35,
+// Drugi pojazd (traktor z przyczepą) stoi na podwórzu; przyczepa jest zaczepiona z tyłu traktora.
+export const INIT_OTHER=()=>({kind:'tractor',x:1295,y:622,angle:0});
+export const INIT_TRAILER=()=>({x:1295,y:701,angle:0,load:0,hitched:true});
+export const state={vehicle:'combine',other:INIT_OTHER(),trailer:INIT_TRAILER(),auger:0,augerOut:false,unloading:false,dumping:false,stored:0,grain:0,x:START.x,y:START.y,angle:START.angle,v:0,steer:0,tool:false,headerOn:true,parked:null,tank:0,time:16*60+35,
   elapsed:0,rate:1,work:0,done:false,playing:false,paused:false,mute:true,cut:0};
 // Gra „biegnie”, gdy rozpoczęta i niezapauzowana.
 export const active=()=>state.playing&&!state.paused;
 export const camera={x:state.x-340,y:state.y-200};
 // Liczniki czasu (sekundy) zastępują dawne RT.frame%n — zachowanie nie zależy od odświeżania ekranu.
-export const RT={hintT:0,last:0,frame:0,acc:0,stamp:0,msgT:0,reelSpin:0,birdT:0,wheelTravel:0,lifeT:0,strawT:0,dustT:0,warnT:0,hudT:0};
+export const RT={hintT:0,last:0,frame:0,acc:0,stamp:0,msgT:0,reelSpin:0,birdT:0,wheelTravel:0,lifeT:0,strawT:0,dustT:0,warnT:0,hudT:0,fullT:0,hitchT:0,spillT:0};
 export const DEBUG={on:false,fps:0,contacts:0};
 export const fx=[];
 // Jeden przelicznik px/metr na całą mapę i pojazdy.
@@ -35,7 +38,7 @@ export const PX_PER_M=12,COMBINE_SCALE=1,MAXSPEED=20,ROAD_SPEED=34,REVERSE_SPEED
 export const VEH={combine:{L:38,work:MAXSPEED,road:ROAD_SPEED,rev:REVERSE_SPEED,acc:9,brake:23},tractor:{L:30,work:56,road:62,rev:22,acc:17,brake:34}};
 export const HEADER_HALF=38*COMBINE_SCALE,HEADER_MIN=49*COMBINE_SCALE,HEADER_MAX=65*COMBINE_SCALE;
 export const FIELD_HA=(FLD.w/PX_PER_M)*(FLD.h/PX_PER_M)/10000;
-export const YIELD_T_HA=5.2,TANK_T=3.0,FINISH_SHARE=.992;
+export const YIELD_T_HA=5.2,TANK_T=0.8,TRAILER_T=2.0,UNLOAD_TPS=.15,DUMP_TPS=.4,FINISH_SHARE=.992;
 export function displayNumber(n,d=1){return n.toFixed(d).replace('.',',')}
 export function formatDuration(t){const m=Math.floor(t/60),ss=Math.floor(t%60);return String(m).padStart(2,'0')+':'+String(ss).padStart(2,'0')}
 export function toast(s){$('#msg').textContent=s;$('#msg').style.opacity='1';RT.msgT=3.3}

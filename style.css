@@ -44,3 +44,5 @@
  .touch button{width:42px;height:46px}.touch button.tool{width:62px}
  .stat strong{font-size:14px}.bottom .stat{min-width:110px;max-width:49vw}
 }
+
+.touch.upper{right:11px;bottom:calc(max(10px,env(safe-area-inset-bottom)) + 52px)}.touch.upper button{width:42px;height:38px;font-size:13px}

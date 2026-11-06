@@ -1,7 +1,8 @@
 // Sylwetka kombajnu i wspólny renderer maszyn.
 // Główny kombajn i kombajn NPC korzystają z tego samego sprite'a i skali.
-import {ctx,rect,state,COMBINE_SCALE,RT,LIGHT,camera} from './core.js';
+import {ctx,rect,state,COMBINE_SCALE,RT,LIGHT,TRAILER_T} from './core.js';
 import {obb} from './geometry.js';
+import {trailerObb,AUGER,TR} from './trailer.js';
 const combine=document.createElement('canvas');combine.width=120;combine.height=132;let cg=combine.getContext('2d');cg.imageSmoothingEnabled=false;
 function drawCombine(){cg.clearRect(0,0,120,132);cg.save();cg.translate(60,69); // heading-up local coordinates
 // No fixed wheels in the body sprite. The ONLY wheels are drawn under the machine
@@ -68,7 +69,15 @@ function drawHeaderDynamic(s,working,travel){
  for(let i=-40;i<42;i+=8)rect(s,i,-56+(reel+5)%3,3,2,working?'#f2c078':'#b98b57');
  rect(s,-2,-66,5,2,working?'#e7d06f':'#71604b');
 }
-function drawMachineAt(g,x,y,angle,steer,travel,working,withHeader=true,scale=COMBINE_SCALE){
+// Rura wysypowa: t=0 złożona wzdłuż lewej burty, t=1 rozłożona w bok (poza heder). Obrót wokół przegubu.
+function drawAuger(s,t){
+ const a=Math.PI/2+t*Math.PI/2,dx=Math.cos(a),dy=Math.sin(a),L=AUGER.len,n=Math.ceil(L/2);
+ for(let i=0;i<=n;i++){const x=AUGER.px+dx*L*i/n,y=AUGER.py+dy*L*i/n;rect(s,x-2,y-2,5,5,'#6b3327')}
+ for(let i=0;i<=n;i++){const x=AUGER.px+dx*L*i/n,y=AUGER.py+dy*L*i/n;rect(s,x-1,y-1,3,3,i>n-4?'#d9d2b4':'#c9583a')}
+ const tx=AUGER.px+dx*L,ty=AUGER.py+dy*L;rect(s,tx-3,ty-3,7,7,'#2c3836');rect(s,tx-2,ty-2,5,5,'#4a5a56');
+ rect(s,AUGER.px-3,AUGER.py-3,7,7,'#5b2c22');rect(s,AUGER.px-2,AUGER.py-2,5,5,'#a84630');
+}
+function drawMachineAt(g,x,y,angle,steer,travel,working,withHeader=true,scale=COMBINE_SCALE,auger=0){
  const boxes=[[27*scale,45.5*scale,.5*scale]];if(withHeader)boxes.push([44*scale,9*scale,-54*scale]);
  orientedShadow(g,x,y,angle,boxes,18);
  drawRotated(g,x,y,angle,s=>{
@@ -89,6 +98,7 @@ function drawMachineAt(g,x,y,angle,steer,travel,working,withHeader=true,scale=CO
   }
   s.drawImage(combine,-60,-69);
   if(withHeader){s.drawImage(headerCv,-60,-69);drawHeaderDynamic(s,working,travel)}
+  drawAuger(s,auger);
  });
 }
 // Heder odstawiony na ziemi: środek (x,y), kierunek „do przodu” jak w momencie zdjęcia.
@@ -127,15 +137,46 @@ function vehObbs(kind,x,y,a,headerOn){
  const o=[obb(fx,fy,26*k,22.5*k,a),obb(rx,ry,22*k,23*k,a)];
  if(headerOn)o.push(obb(hx,hy,44*k,9*k,a));return o;
 }
-function playerObbs(){return vehObbs(state.vehicle,state.x,state.y,state.angle,state.headerOn)}
-function otherObbs(){const o=state.other;return vehObbs(o.kind,o.x,o.y,o.angle,state.headerOn)}
-function drawHarvester(){
- if(state.vehicle==='tractor')drawTractorAt(ctx,state.x,state.y,state.angle,state.steer,RT.wheelTravel);
- else drawMachineAt(ctx,state.x,state.y,state.angle,state.steer,RT.wheelTravel,state.tool&&state.headerOn,state.headerOn)
+function playerObbs(){
+ const o=vehObbs(state.vehicle,state.x,state.y,state.angle,state.headerOn);
+ if(state.vehicle==='tractor'&&state.trailer.hitched)o.push(trailerObb());
+ return o;
 }
-function drawOtherVehicle(){
- const o=state.other;
- if(o.kind==='tractor')drawTractorAt(ctx,o.x,o.y,o.angle,0,0);else drawMachineAt(ctx,o.x,o.y,o.angle,0,0,false,state.headerOn);
+function otherObbs(){const o=state.other;return vehObbs(o.kind,o.x,o.y,o.angle,state.headerOn)}
+// Przyczepa: skrzynia z deskami, burty, koła z bieżnikiem, dyszel. Zboże rośnie od środka skrzyni.
+function drawTrailerAt(g,x,y,angle,travel,load){
+ orientedShadow(g,x,y,angle,[[17,32,0]],14);
+ drawRotated(g,x,y,angle,s=>{
+  const off=Math.round((((-travel)%5)+5)%5);
+  for(const side of [-1,1]){
+   s.save();s.translate(side*21,12);
+   rect(s,-4,-11,8,22,'#293532');rect(s,-3,-10,6,20,'#3c4640');
+   for(let t=-11+off-5;t<11;t+=5){if(t<-11||t+3>11)continue;rect(s,-4,t,2,2,'#757b6e');rect(s,2,t+1,2,2,'#676c61')}
+   s.restore();
+  }
+  rect(s,-1,-46,3,16,'#4a3b30');rect(s,-3,-48,7,4,'#2f2a26');
+  rect(s,-18,-32,36,64,'#4f3b27');rect(s,-16,-30,32,60,'#a07f50');
+  for(let yy=-27;yy<30;yy+=6)rect(s,-16,yy,32,1,'#8a6b43');
+  rect(s,-18,-32,36,3,'#6d5338');rect(s,-18,29,36,3,'#6d5338');
+  const f=Math.min(1,load/TRAILER_T);
+  if(f>.005){
+   const ln=Math.max(6,Math.round(58*f));
+   rect(s,-15,-ln/2,30,ln,'#c79d3b');rect(s,-14,-ln/2+1,28,ln-2,'#e3b94d');
+   for(let k=-ln/2+2;k<ln/2-1;k+=3)rect(s,-14,k,28,1,'#f0cd6b');
+  }
+ });
+}
+// Pojazdy gracza i drugi pojazd: najpierw traktor z przyczepą, na końcu kombajn (jego rura jest nad przyczepą).
+function drawAllVehicles(){
+ const trailer=state.trailer;
+ drawTrailerAt(ctx,trailer.x,trailer.y,trailer.angle,state.vehicle==='tractor'?RT.wheelTravel:0,trailer.load);
+ const list=[{kind:state.vehicle,x:state.x,y:state.y,angle:state.angle,steer:state.steer,travel:RT.wheelTravel,player:true},
+  {kind:state.other.kind,x:state.other.x,y:state.other.y,angle:state.other.angle,steer:0,travel:0,player:false}];
+ list.sort((a,b)=>(a.kind==='combine')-(b.kind==='combine'));
+ for(const q of list){
+  if(q.kind==='tractor')drawTractorAt(ctx,q.x,q.y,q.angle,q.steer,q.travel);
+  else drawMachineAt(ctx,q.x,q.y,q.angle,q.steer,q.travel,q.player&&state.tool&&state.headerOn,state.headerOn,COMBINE_SCALE,state.auger);
+ }
 }
 
-export {drawOtherVehicle,otherObbs,vehObbs,drawTractorAt,worldOffset,drawMachineAt,drawHarvester,drawParkedHeader,playerObbs,orientedShadow,drawRotated};
+export {drawAllVehicles,drawTrailerAt,offAt,otherObbs,vehObbs,drawTractorAt,worldOffset,drawMachineAt,drawParkedHeader,playerObbs,orientedShadow,drawRotated};
