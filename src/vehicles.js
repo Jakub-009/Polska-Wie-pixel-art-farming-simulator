@@ -1,0 +1,63 @@
+// Sylwetka kombajnu i wspólny renderer maszyn.
+// Główny kombajn i kombajn NPC korzystają z tego samego sprite'a i skali.
+import {ctx,rect,state,COMBINE_SCALE,RT} from './core.js';
+const combine=document.createElement('canvas');combine.width=120;combine.height=132;let cg=combine.getContext('2d');cg.imageSmoothingEnabled=false;
+function drawCombine(){cg.clearRect(0,0,120,132);cg.save();cg.translate(60,69); // heading-up local coordinates
+// No fixed wheels in the body sprite. The ONLY wheels are drawn under the machine
+// in drawMachineAt(), where the REAR axle steers and the tread moves with distance.
+// 5-pixel cast edge, body, red side panels, engine behind cab.
+rect(cg,-19,-39,41,85,'#713c2d');rect(cg,-21,-38,41,82,'#b94b32');rect(cg,-19,-37,36,81,'#cc5c37');rect(cg,-18,-36,35,3,'#e47b4c');rect(cg,-17,37,31,5,'#883a2c');
+// Bin and hatch.
+rect(cg,-15,-1,30,29,'#ad4b30');rect(cg,-12,0,24,23,'#d49354');rect(cg,-10,2,20,19,'#e5b16c');for(let j=0;j<4;j++)rect(cg,-8,4+j*4,15,1,j%2?'#df9f5e':'#f1c27a');rect(cg,-14,27,28,3,'#7d3d29');
+// Engine grill.
+rect(cg,-15,33,27,9,'#883c2d');for(let j=0;j<3;j++)rect(cg,-12,34+j*3,20,1,'#d16e4b');
+// Header feed throat and operator cabin front.
+rect(cg,-13,-43,29,8,'#893f2f');rect(cg,-19,-38,37,30,'#723e34');rect(cg,-17,-39,32,27,'#567d82');rect(cg,-15,-37,28,18,'#81a2a2');rect(cg,-15,-37,27,3,'#c5d2bc');rect(cg,-14,-16,26,3,'#394a4d');rect(cg,11,-31,5,13,'#344c4e');rect(cg,-15,-15,9,3,'#d5ab62');
+// Warning reflectors and asymmetrical unloading auger.
+rect(cg,-20,31,3,5,'#edc46c');rect(cg,16,31,3,5,'#f4d275');rect(cg,20,-4,17,5,'#b94632');rect(cg,35,-6,5,8,'#7c3e30');rect(cg,36,-5,2,3,'#e6a15b');
+// Front cutter housing and long wheat header (work width ~80px).
+rect(cg,-12,-54,26,13,'#8c3727');rect(cg,-43,-59,88,14,'#9f3e2b');rect(cg,-44,-60,88,4,'#dc6646');rect(cg,-44,-46,88,3,'#6d422f');rect(cg,-41,-56,82,7,'#cb5135');for(let x=-42;x<=41;x+=6){rect(cg,x,-63,4,6,'#8d6640');rect(cg,x+1,-63,2,3,'#d0a16a')}
+// Reel: diagonal braces and central axis; additional RT.frame animated at draw-time.
+rect(cg,-38,-54,77,2,'#f0b875');for(let x=-37;x<40;x+=11)rect(cg,x,-56,2,9,'#6a492c');
+cg.restore()}
+drawCombine();
+function rotateOffset(px,py,a){return [Math.cos(a)*px+Math.sin(a)*(-py),Math.sin(a)*px+Math.cos(a)*py]}
+// Standard local: forward is -y; x right.
+function worldOffset(lx,ly){return [state.x+Math.cos(state.angle)*lx+Math.sin(state.angle)*(-ly),state.y+Math.sin(state.angle)*lx+Math.cos(state.angle)*ly]}
+// Shared combine renderer. A single model at a single scale for both combine machines.
+// Viewed from above, only the REAR wheels steer; front wheels are fixed and larger.
+function drawMachineAt(g,x,y,angle,steer,travel,working,scale=COMBINE_SCALE){
+ g.save();g.translate(Math.round(x),Math.round(y));g.rotate(angle);g.scale(scale,scale);
+ // Ground-contact shadow, not a second set of black tyres.
+ g.globalAlpha=.23;rect(g,-31+8,-49+10,67,99,'#34472e');rect(g,-45+8,-62+8,91,15,'#34472e');g.globalAlpha=1;
+ // Top-down tyre textures shift with distance rather than spinning like circular side-view wheels.
+ // The front axle is FIXED; rear wheels steer the opposite way to the requested turn.
+ const phase=((Math.round(travel/11)%5)+5)%5;
+ for(const axle of [{y:-14,offset:25,w:10,h:25,rear:false},{y:32,offset:21,w:8,h:17,rear:true}]){
+  for(const side of [-1,1]){
+   const wx=side*(axle.offset+axle.w*.18);
+   g.save();g.translate(wx,axle.y);
+   if(axle.rear)g.rotate(-steer*.29); // rear steering axle
+   rect(g,-axle.w/2,-axle.h/2,axle.w,axle.h,'#293532');
+   rect(g,-axle.w/2+1,-axle.h/2+1,axle.w-2,axle.h-2,'#3c4640');
+   for(let t=-axle.h/2+phase;t<axle.h/2;t+=5){
+    rect(g,-axle.w/2,t,3,2,'#757b6e');rect(g,axle.w/2-3,t+1,3,2,'#676c61');
+   }
+   g.restore();
+  }
+ }
+ g.drawImage(combine,-60,-69);
+ // Only the reel and cutter animate, NOT stationary geometric wheels.
+ if(working){
+   const q=Math.round(Math.sin(RT.reelSpin*1.35));
+   rect(g,-35,-52+q,70,1,'#edbc73');
+   for(let i=-34;i<36;i+=13)rect(g,i,-57+(Math.floor(RT.reelSpin)%4),2,4,'#ad673f');
+ }
+ const reel=Math.floor((working?RT.reelSpin:travel*.12))%5;
+ for(let i=-40;i<42;i+=8)rect(g,i,-56+(reel+5)%3,3,2,working?'#f2c078':'#b98b57');
+ rect(g,-2,-66,5,2,working?'#e7d06f':'#71604b');
+ g.restore();
+}
+function drawHarvester(){drawMachineAt(ctx,state.x,state.y,state.angle,state.steer,RT.wheelTravel,state.tool)}
+
+export {worldOffset,drawMachineAt,drawHarvester};

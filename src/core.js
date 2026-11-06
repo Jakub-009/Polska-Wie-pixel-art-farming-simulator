@@ -1,0 +1,30 @@
+// Wspólne jednostki, stan symulacji i małe funkcje rysowania.
+// 0.3.2: migracja 0.3.1 na moduły; parametry rozgrywki pozostają bez zmian.
+export const C=document.querySelector('#game');
+export const ctx=C.getContext('2d',{alpha:false});
+export const VIEW={w:640,h:360};
+export const $=s=>document.querySelector(s);
+export const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+export const lerp=(a,b,t)=>a+(b-a)*t;
+export function hash(x,y,z=0){let n=Math.imul(x+1289,374761393)^Math.imul(y+3929,668265263)^Math.imul(z+17,2147483647);n=Math.imul(n^(n>>>13),1274126177);return((n^(n>>>16))>>>0)/4294967296}
+export function rect(g,x,y,w,h,c){g.fillStyle=c;g.fillRect(Math.round(x),Math.round(y),Math.round(w),Math.round(h))}
+export function line(g,x,y,x2,y2,c,w=1){g.strokeStyle=c;g.lineWidth=w;g.beginPath();g.moveTo(Math.round(x),Math.round(y));g.lineTo(Math.round(x2),Math.round(y2));g.stroke()}
+export const WORLD={w:1960,h:1600},FLD={x:235,y:177,n:80,t:8};FLD.w=FLD.n*FLD.t;FLD.h=FLD.w;export const N=FLD.n*FLD.n;
+
+export function poly(g,pts,col){g.fillStyle=col;g.beginPath();pts.forEach((p,i)=>i?g.lineTo(p[0],p[1]):g.moveTo(p[0],p[1]));g.closePath();g.fill()}
+export function shadow(g,x,y,w,h){poly(g,[[x+6,y+6],[x+w+6,y+6],[x+w+38,y+h+24],[x+38,y+h+24]],'#40564268')}
+
+export const keys=new Set();
+export const state={x:815,y:304,angle:-Math.PI/2,v:0,steer:0,tool:false,tank:0,time:16*60+35,
+  elapsed:0,rate:1,work:0,done:false,playing:false,mute:true,cut:0};
+export const camera={x:state.x-340,y:state.y-200};
+export const RT={last:0,frame:0,stamp:0,msgT:0,reelSpin:0,birdT:0,wheelTravel:0,lifeT:0};
+export const fx=[];
+// Jeden przelicznik px/metr na całą mapę i pojazdy.
+export const PX_PER_M=12,COMBINE_SCALE=.82,MAXSPEED=20,ROAD_SPEED=34,REVERSE_SPEED=12;
+export const HEADER_HALF=38*COMBINE_SCALE,HEADER_MIN=49*COMBINE_SCALE,HEADER_MAX=65*COMBINE_SCALE;
+export const FIELD_HA=(FLD.w/PX_PER_M)*(FLD.h/PX_PER_M)/10000;
+export const YIELD_T_HA=5.2,TANK_T=3.0,FINISH_SHARE=.992;
+export function displayNumber(n,d=1){return n.toFixed(d).replace('.',',')}
+export function formatDuration(t){const m=Math.floor(t/60),ss=Math.floor(t%60);return String(m).padStart(2,'0')+':'+String(ss).padStart(2,'0')}
+export function toast(s){$('#msg').textContent=s;$('#msg').style.opacity='1';RT.msgT=3.3}
