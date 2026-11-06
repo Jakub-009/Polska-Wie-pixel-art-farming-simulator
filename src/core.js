@@ -1,12 +1,13 @@
 // Wspólne jednostki, stan symulacji i małe funkcje rysowania.
-// 0.3.2: migracja 0.3.1 na moduły; parametry rozgrywki pozostają bez zmian.
+// 0.4.0: stały krok czasowy, pauza jako osobny stan, tryb debug, liczniki czasu zamiast modulo klatek.
+export const VERSION='0.4.0';
 export const C=document.querySelector('#game');
 export const ctx=C.getContext('2d',{alpha:false});
-export const VIEW={w:640,h:360};
+export const VIEW={w:640,h:360,scale:3};
 export const $=s=>document.querySelector(s);
 export const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 export const lerp=(a,b,t)=>a+(b-a)*t;
-export function hash(x,y,z=0){let n=Math.imul(x+1289,374761393)^Math.imul(y+3929,668265263)^Math.imul(z+17,2147483647);n=Math.imul(n^(n>>>13),1274126177);return((n^(n>>>16))>>>0)/4294967296}
+export function hash(x,y,z=0){let n=Math.imul(x+1289|0,374761393)^Math.imul(y+3929|0,668265263)^Math.imul(z+17|0,2147483647);n=Math.imul(n^(n>>>13),1274126177);return((n^(n>>>16))>>>0)/4294967296}
 export function rect(g,x,y,w,h,c){g.fillStyle=c;g.fillRect(Math.round(x),Math.round(y),Math.round(w),Math.round(h))}
 export function line(g,x,y,x2,y2,c,w=1){g.strokeStyle=c;g.lineWidth=w;g.beginPath();g.moveTo(Math.round(x),Math.round(y));g.lineTo(Math.round(x2),Math.round(y2));g.stroke()}
 export const WORLD={w:1960,h:1600},FLD={x:235,y:177,n:80,t:8};FLD.w=FLD.n*FLD.t;FLD.h=FLD.w;export const N=FLD.n*FLD.n;
@@ -16,9 +17,13 @@ export function shadow(g,x,y,w,h){poly(g,[[x+6,y+6],[x+w+6,y+6],[x+w+38,y+h+24],
 
 export const keys=new Set();
 export const state={x:815,y:304,angle:-Math.PI/2,v:0,steer:0,tool:false,tank:0,time:16*60+35,
-  elapsed:0,rate:1,work:0,done:false,playing:false,mute:true,cut:0};
+  elapsed:0,rate:1,work:0,done:false,playing:false,paused:false,mute:true,cut:0};
+// Gra „biegnie”, gdy rozpoczęta i niezapauzowana.
+export const active=()=>state.playing&&!state.paused;
 export const camera={x:state.x-340,y:state.y-200};
-export const RT={last:0,frame:0,stamp:0,msgT:0,reelSpin:0,birdT:0,wheelTravel:0,lifeT:0};
+// Liczniki czasu (sekundy) zastępują dawne RT.frame%n — zachowanie nie zależy od odświeżania ekranu.
+export const RT={last:0,frame:0,acc:0,stamp:0,msgT:0,reelSpin:0,birdT:0,wheelTravel:0,lifeT:0,strawT:0,dustT:0,warnT:0,hudT:0};
+export const DEBUG={on:false,fps:0,contacts:0};
 export const fx=[];
 // Jeden przelicznik px/metr na całą mapę i pojazdy.
 export const PX_PER_M=12,COMBINE_SCALE=.82,MAXSPEED=20,ROAD_SPEED=34,REVERSE_SPEED=12;
