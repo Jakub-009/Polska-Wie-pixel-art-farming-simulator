@@ -5,14 +5,14 @@ import {hash,FLD,WORLD} from './core.js';
 import {distToSegment} from './geometry.js';
 
 // ── Skala drzew: jeden mnożnik na całą mapę (patrz plan 0.4.1 — korekta skali) ──
-export const TREE_SCALE=1;
+export const TREE_SCALE=1.6;
 
 // ── Graf dróg ──
 export const NODES={nN:[945,-35],jD:[945,386],jX:[945,962],nS:[945,1640],nW:[-35,962],nE:[1995,962],dE:[1180,386]};
 export const EDGES=[
- {a:'nN',b:'jD',w:53,kind:'road'},{a:'jD',b:'jX',w:53,kind:'road'},{a:'jX',b:'nS',w:53,kind:'road'},
- {a:'nW',b:'jX',w:40,kind:'road'},{a:'jX',b:'nE',w:40,kind:'road'},
- {a:'jD',b:'dE',w:44,kind:'drive'}
+ {a:'nN',b:'jD',w:60,kind:'road'},{a:'jD',b:'jX',w:60,kind:'road'},{a:'jX',b:'nS',w:60,kind:'road'},
+ {a:'nW',b:'jX',w:48,kind:'road'},{a:'jX',b:'nE',w:48,kind:'road'},
+ {a:'jD',b:'dE',w:48,kind:'drive'}
 ];
 export const ROADS={nodes:NODES,edges:EDGES,
  degree:Object.fromEntries(Object.keys(NODES).map(k=>[k,EDGES.filter(e=>e.a===k||e.b===k).length])),
@@ -95,7 +95,7 @@ function addTree(x,y,r,type,s=1,o={}){
  s*=TREE_SCALE;
  if(!free(x,y,r*s,o))return;
  trees.push({x,y,r,type,s,tag:o.tag||''});
- addCircle(x+1,y+4,5,'tree');
+ addCircle(x+1,y+4,7,'tree');
 }
 function addShrub(x,y,r,seed,o={}){if(free(x,y,r,o))shrubs.push({x,y,r,seed})}
 

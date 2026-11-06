@@ -1,8 +1,8 @@
 // Życie wsi (0.4.0): pojazdy NPC jeżdżą po grafie dróg z mapy, piesi chodzą po trasach,
 // wszyscy mają kolizje i reagują na kombajn gracza (hamują / czekają).
-import {ctx,rect,line,hash,FLD,camera,VIEW,state,RT,clamp,WORLD} from './core.js';
+import {ctx,rect,line,hash,FLD,camera,VIEW,state,RT,clamp,WORLD,LIGHT} from './core.js';
 import {crop} from './world.js';
-import {drawMachineAt,playerObbs} from './vehicles.js';
+import {drawMachineAt,playerObbs,orientedShadow} from './vehicles.js';
 import {MAP,ROADS} from './map.js';
 import {obb,circle,collide} from './geometry.js';
 
@@ -21,41 +21,44 @@ function drawLivingWorld(){
 function drawCanopyLife(){
  const t=state.elapsed;let i=0;
  for(const tr of MAP.trees){if(tr.tag!=='orchard')continue;
-  rect(ctx,tr.x+Math.round(Math.sin(t*.9+i*.8)*2)-5,tr.y-19*tr.s,4,2,'#a9b77b');i++}
+  rect(ctx,tr.x+Math.round(Math.sin(t*.9+i*.8)*2)-5,tr.y-tr.r*tr.s*.85,4,2,'#a9b77b');i++}
 }
 
 function nearCam(x,y,r=70){return x>camera.x-r&&x<camera.x+VIEW.w+r&&y>camera.y-r&&y<camera.y+VIEW.h+r}
-function pixelPerson(g,x,y,coat='#69865d',step=0,scale=1){
+// Wszystkie sprite'y rysowane ściśle z góry; cień pada zgodnie z LIGHT.
+function blob(g,x,y,rx,ry,h){g.fillStyle='#3d563b55';g.beginPath();g.ellipse(Math.round(x+LIGHT.x*h),Math.round(y+LIGHT.y*h),rx,ry,Math.atan2(LIGHT.y,LIGHT.x),0,Math.PI*2);g.fill()}
+function pixelPerson(g,x,y,coat='#69865d',step=0){
  if(!nearCam(x,y,16))return;
- g.save();g.translate(Math.round(x),Math.round(y));g.scale(scale,scale);
- rect(g,1,2,5,3,'#40544055');
- rect(g,-2,-7,5,6,coat);rect(g,-1,-10,3,4,'#dbb28c');
- rect(g,-2,-11,4,2,'#67533c');rect(g,-1,-1,2,3,'#4b5247');rect(g,2,-1+(step%2),2,3,'#384942');
- g.restore();
+ x=Math.round(x);y=Math.round(y);blob(g,x,y,6,3,6);
+ const dark='#33463d';
+ rect(g,x-2,y+3+(step%2),2,3,'#3f463f');rect(g,x+1,y+3+((step+1)%2),2,3,'#3f463f'); // stopy
+ rect(g,x-5,y-1,2,5,dark);rect(g,x+4,y-1,2,5,dark);                                  // ramiona
+ rect(g,x-4,y-2,9,6,coat);rect(g,x-4,y-2,9,1,'#ffffff22');                           // barki
+ rect(g,x-2,y-4,5,5,'#dbb28c');rect(g,x-2,y-5,5,3,'#67533c');                        // głowa i włosy
 }
-function cow(g,x,y,phase=0,scale=1){
- if(!nearCam(x,y,24))return;
- g.save();g.translate(Math.round(x),Math.round(y));g.scale(scale,scale);
- rect(g,5,8,19,5,'#41564255');
- rect(g,-9,-5,17,12,'#ede4ce');rect(g,-7,-3,5,5,'#5a4d41');rect(g,0,1,5,5,'#584d44');
- rect(g,7,-4,7,8,'#e3d8c0');rect(g,11,-2,4,4,'#c29b83');
- rect(g,-6,-7,4,3,'#4d443c');
- for(let i=0;i<4;i++)rect(g,-6+(i%2)*13,4+(i>1?1:0),3,4,'#746858');
- const a=Math.round(Math.sin(phase)*2);rect(g,-13,-4+a,4,2,'#c6bfa9');rect(g,10,-5,2,1,'#453d35');
+function cow(g,x,y,phase=0,flip=1){
+ if(!nearCam(x,y,34))return;
+ x=Math.round(x);y=Math.round(y);blob(g,x,y,17,7,7);
+ g.save();g.translate(x,y);g.scale(flip,1);
+ rect(g,-15,-6,26,12,'#d9cfb7');rect(g,-14,-6,24,11,'#ede4ce');
+ rect(g,-11,-5,7,6,'#4d443c');rect(g,-1,0,7,5,'#584d44');rect(g,6,-5,4,4,'#4d443c');rect(g,-14,2,4,3,'#584d44');
+ rect(g,10,-4,7,8,'#e3d8c0');rect(g,16,-2,3,5,'#c9a08c');           // głowa i pysk
+ rect(g,10,-6,3,2,'#4d443c');rect(g,10,4,3,2,'#4d443c');            // uszy
+ rect(g,-19,-1+Math.round(Math.sin(phase)*2),5,2,'#c6bfa9');        // ogon
  g.restore();
 }
 function deer(g,x,y,phase=0){
- if(!nearCam(x,y,25))return;
- g.save();g.translate(Math.round(x),Math.round(y));
- rect(g,4,9,18,3,'#3e5b4855');rect(g,-7,-6,12,8,'#a97c55');rect(g,2,-8,6,6,'#bf9166');
- rect(g,6,-10,2,4,'#91734d');rect(g,9,-10,2,4,'#8b6a4e');
- for(let a=-6;a<7;a+=8)rect(g,a,0+Math.sin(phase+a)*1,2,7,'#7a5f46');
- rect(g,-10,-7,4,3,'#e4c9a0');g.restore();
+ if(!nearCam(x,y,34))return;
+ x=Math.round(x);y=Math.round(y);blob(g,x,y,14,5,6);
+ rect(g,x-12,y-4,22,9,'#8f6a47');rect(g,x-11,y-4,20,7,'#a97c55');rect(g,x-8,y-1,14,2,'#93694a');
+ rect(g,x+9,y-3,8,6,'#bf9166');rect(g,x+16,y-2,3,4,'#6b523c');
+ rect(g,x+10,y-6,3,3,'#91734d');rect(g,x+10,y+4,3,3,'#91734d');
+ rect(g,x-15,y-2+Math.round(Math.sin(phase)),4,4,'#e4c9a0');
 }
 function carTop(g,x,y,col,heading=0){
  if(!nearCam(x,y,58))return;
+ orientedShadow(g,x+1,y-1,heading,[[13,24,0]],10,'#37474355');
  g.save();g.translate(Math.round(x),Math.round(y));g.rotate(heading);
- rect(g,-10,-22,27,47,'#37474355');
  for(let a of [-12,9]){rect(g,a,-15,5,9,'#2e3434');rect(g,a,10,5,10,'#303836')}
  rect(g,-9,-23,22,46,'#414944');rect(g,-8,-24,20,45,col);
  rect(g,-6,-12,16,13,'#668d97');rect(g,-5,-10,14,7,'#a1b6ba');
@@ -65,8 +68,8 @@ function carTop(g,x,y,col,heading=0){
 }
 function miniTractor(g,x,y,heading=0,working=false){
  if(!nearCam(x,y,45))return;
+ orientedShadow(g,x,y,heading,[[17,27,2]],13,'#3b4a3f55');
  g.save();g.translate(Math.round(x),Math.round(y));g.rotate(heading);
- rect(g,7,9,28,9,'#3b4a3f65');
  for(let a of [-17,9]){rect(g,-14,a,7,11,'#343a35');rect(g,10,a,7,11,'#343a35')}
  rect(g,-9,-22,22,46,'#98513b');rect(g,-7,-20,17,22,'#c26440');
  rect(g,-8,4,19,16,'#567d7a');rect(g,-6,6,15,11,'#9cb5a5');
@@ -91,8 +94,8 @@ function birds(g,t){
 // hh/hw: półwymiary obrysu (px), cy: przesunięcie środka obrysu wzdłuż osi pojazdu (+ = do tyłu), lane: odsunięcie od osi jezdni.
 const SPECS={
  car:{speed:34,hw:12,hh:24,cy:-1,lane:14,allow:['road']},
- tractor:{speed:22,hw:16,hh:27,cy:3,lane:18,allow:['road']},
- combine:{speed:14,hw:36,hh:46,cy:-7,lane:6,allow:['road']}
+ tractor:{speed:22,hw:16,hh:27,cy:3,lane:17,allow:['road']},
+ combine:{speed:14,hw:44,hh:55,cy:-9,lane:6,allow:['road']}
 };
 const TURN_RATE=2.4; // rad/s
 const angDiff=(a,b)=>{let d=(b-a)%(Math.PI*2);if(d>Math.PI)d-=Math.PI*2;if(d<-Math.PI)d+=Math.PI*2;return d};
@@ -185,7 +188,7 @@ class Person{
   this.step+=dt*(this.speed/5);
   this.shape=circle(this.x,this.y,5);
  }
- draw(){pixelPerson(ctx,this.x,this.y,this.coat,Math.floor(this.step),this.scale)}
+ draw(){pixelPerson(ctx,this.x,this.y,this.coat,Math.floor(this.step))}
 }
 
 const walkers=[
@@ -218,7 +221,7 @@ function drawVillageLife(){
  for(let i=0;i<4;i++){
   const x=clamp(68+(i%2)*68+Math.sin(t*.13+i*2)*11,pa.x0+20,pa.x1-20);
   const y=clamp(405+Math.floor(i/2)*235+Math.cos(t*.09+i*1.7)*12,pa.y0+20,pa.y1-20);
-  cow(ctx,x,y,t*.8+i*4,i===2?.9:1);
+  cow(ctx,x,y,t*.8+i*4,Math.cos(t*.13+i*2)>=0?1:-1);
  }
  const deerCycle=t%66;
  if(deerCycle<22)deer(ctx,44+deerCycle*7.7,1018+Math.sin(deerCycle*.3)*7,deerCycle*4);

@@ -51,6 +51,13 @@ Potem otwórz `http://localhost:8000/`. Alternatywnie użyj rozszerzenia Live Se
 | `src/controls.js` | Klawiatura, dotyk, pauza |
 | `src/main.js` | Stały krok symulacji, kolizje, kamera, restart, diagnostyka |
 
+## Zmiany w 0.4.1
+
+- **Skala:** kombajn w skali 1:1 (12 px/m, bez `scale()`, więc bez „mixeli”); drzewa większe (`TREE_SCALE` w `map.js`, rysowane w docelowym rozmiarze), krzewy ×1,4; drogi szersze (5 m).
+- **Jeden rzut:** krowy, jeleń i piesi rysowani z góry.
+- **Jeden wektor światła** `LIGHT` (core.js): cienie budynków, drzew, słupów, aut i kombajnu padają w tę samą stronę; cienie pojazdów liczone w układzie świata, nie obracają się z maszyną.
+- **Pszenica i ściernisko:** gładki szum barwy zamiast kwadratów, poziome rzędy z kłosami zamiast pionowych kresek.
+
 ## Zmiany w 0.4.0
 
 - **Mapa jako dane (`map.js`).** Rysowanie, kolizje i trasy NPC korzystają z tych samych list. Roślinność jest rozmieszczana z regułami: nic nie rośnie na drodze, w budynku ani w polu.
@@ -63,4 +70,4 @@ Potem otwórz `http://localhost:8000/`. Alternatywnie użyj rozszerzenia Live Se
 
 ## Znane problemy / dalej
 
-0.4.1: skala drzew i zwierząt, jednolity rzut i wektor światła, pszenica. Zbiornik (3 t) nie zapełnia się przy polu 0,28 ha — do rozwiązania razem z rozładunkiem (0.5).
+0.4.2: obrót sprite'ów z prerenderowanych klatek, paleta, ściana domu/stodoły z przodu. Zbiornik (3 t) nie zapełnia się przy polu 0,28 ha — do rozwiązania razem z rozładunkiem (0.5).

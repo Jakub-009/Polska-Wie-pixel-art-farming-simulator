@@ -1,6 +1,6 @@
 // Sylwetka kombajnu i wspólny renderer maszyn.
 // Główny kombajn i kombajn NPC korzystają z tego samego sprite'a i skali.
-import {ctx,rect,state,COMBINE_SCALE,RT} from './core.js';
+import {ctx,rect,state,COMBINE_SCALE,RT,LIGHT} from './core.js';
 import {obb} from './geometry.js';
 const combine=document.createElement('canvas');combine.width=120;combine.height=132;let cg=combine.getContext('2d');cg.imageSmoothingEnabled=false;
 function drawCombine(){cg.clearRect(0,0,120,132);cg.save();cg.translate(60,69); // heading-up local coordinates
@@ -22,15 +22,30 @@ rect(cg,-12,-54,26,13,'#8c3727');rect(cg,-43,-59,88,14,'#9f3e2b');rect(cg,-44,-6
 rect(cg,-38,-54,77,2,'#f0b875');for(let x=-37;x<40;x+=11)rect(cg,x,-56,2,9,'#6a492c');
 cg.restore()}
 drawCombine();
+// Cień w układzie świata (nie obraca się z maszyną): otoczka wypukła prostokątów i ich przesunięcia o LIGHT*h.
+// boxes: [połówka szerokości, połówka długości, przesunięcie środka wzdłuż osi].
+function orientedShadow(g,x,y,ang,boxes,h,col='#34472e3a'){
+ const c=Math.cos(ang),s=Math.sin(ang),dx=LIGHT.x*h,dy=LIGHT.y*h,pts=[];
+ for(const [hw,hh,cy] of boxes)for(const [lx,ly] of [[-hw,cy-hh],[hw,cy-hh],[hw,cy+hh],[-hw,cy+hh]]){
+  const px=x+c*lx-s*ly,py=y+s*lx+c*ly;pts.push([px,py],[px+dx,py+dy]);
+ }
+ pts.sort((a,b)=>a[0]-b[0]||a[1]-b[1]);
+ const cr=(o,a,b)=>(a[0]-o[0])*(b[1]-o[1])-(a[1]-o[1])*(b[0]-o[0]);
+ const lo=[],up=[];
+ for(const p of pts){while(lo.length>1&&cr(lo[lo.length-2],lo[lo.length-1],p)<=0)lo.pop();lo.push(p)}
+ for(const p of pts.slice().reverse()){while(up.length>1&&cr(up[up.length-2],up[up.length-1],p)<=0)up.pop();up.push(p)}
+ const hull=lo.slice(0,-1).concat(up.slice(0,-1));
+ g.fillStyle=col;g.beginPath();hull.forEach((p,i)=>i?g.lineTo(p[0],p[1]):g.moveTo(p[0],p[1]));g.closePath();g.fill();
+}
 function rotateOffset(px,py,a){return [Math.cos(a)*px+Math.sin(a)*(-py),Math.sin(a)*px+Math.cos(a)*py]}
 // Standard local: forward is -y; x right.
 function worldOffset(lx,ly){return [state.x+Math.cos(state.angle)*lx+Math.sin(state.angle)*(-ly),state.y+Math.sin(state.angle)*lx+Math.cos(state.angle)*ly]}
 // Shared combine renderer. A single model at a single scale for both combine machines.
 // Viewed from above, only the REAR wheels steer; front wheels are fixed and larger.
 function drawMachineAt(g,x,y,angle,steer,travel,working,scale=COMBINE_SCALE){
+ orientedShadow(g,x,y,angle,[[33*scale,45.5*scale,.5*scale],[44*scale,9*scale,-54*scale]],18);
  g.save();g.translate(Math.round(x),Math.round(y));g.rotate(angle);g.scale(scale,scale);
  // Ground-contact shadow, not a second set of black tyres.
- g.globalAlpha=.23;rect(g,-31+8,-49+10,67,99,'#34472e');rect(g,-45+8,-62+8,91,15,'#34472e');g.globalAlpha=1;
  // Top-down tyre textures shift with distance rather than spinning like circular side-view wheels.
  // The front axle is FIXED; rear wheels steer the opposite way to the requested turn.
  const phase=((Math.round(travel/11)%5)+5)%5;
@@ -67,4 +82,4 @@ function playerObbs(){
 }
 function drawHarvester(){drawMachineAt(ctx,state.x,state.y,state.angle,state.steer,RT.wheelTravel,state.tool)}
 
-export {worldOffset,drawMachineAt,drawHarvester,playerObbs};
+export {worldOffset,drawMachineAt,drawHarvester,playerObbs,orientedShadow};
