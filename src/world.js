@@ -26,9 +26,10 @@ function outlinedDraw(dst,x,y,drawFn,col='#1f3027'){
  dst.drawImage(otmp2,Math.round(x)-100,Math.round(y)-100);
 }
 // Krawędzie malowane ścieżkami (wielokąty, elipsy) są wygładzane — progowanie alfa daje ostre, pikselowe brzegi.
-function crispAlpha(cv){
+function crispAlpha(cv,soft=false){
  const c=cv.getContext('2d'),im=c.getImageData(0,0,cv.width,cv.height),d=im.data;
- for(let i=3;i<d.length;i+=4)d[i]=d[i]<128?0:255;
+ // soft: zostaw półprzezroczyste cienie (alfa < 140), utwardź tylko krawędzie obiektów
+ for(let i=3;i<d.length;i+=4)d[i]=soft?(d[i]>=140?255:d[i]<24?0:d[i]):(d[i]<128?0:255);
  c.putImageData(im,0,0);
 }
 
@@ -290,7 +291,7 @@ function buildWorld(){
  paintFarm();
  for(let j=0;j<FLD.n;j++)for(let i=0;i<FLD.n;i++)fieldTile(i,j);
  paintObjects();
- crispAlpha(decorHigh);
+ crispAlpha(decorHigh);crispAlpha(decorLow,true);
 }
 
 export {ground,field,crop,tracks,tc,decorLow,decorHigh,fieldTile,buildWorld};

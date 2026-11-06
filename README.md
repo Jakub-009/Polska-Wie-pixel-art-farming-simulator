@@ -103,6 +103,9 @@ Potem otwórz `http://localhost:8000/`. Alternatywnie użyj rozszerzenia Live Se
 
 0.4.3: przebudowa gospodarstwa (obwodnica, plac manewrowy, test przejezdności). Zbiornik (3 t) nie zapełnia się przy polu 0,28 ha — do rozwiązania razem z rozładunkiem (0.5).
 
+## 0.5.3
+- Ostrość: linie 1 px (płoty, szlaki, rzędy) wyrównane do piksela, utwardzone krawędzie obiektów na warstwie dolnej (gospodarstwo, pastwisko, płoty).
+
 ## 0.5.2
 - Silosy zbożowe typu BIN (blacha falista, stożkowy dach, drabina, właz, wywietrznik), kosz zasypowy i przenośnik ślimakowy. Zboże wysypane poza koszem przepada.
 - Wózek z hederem (H), przyczepa zbożowa z odczepianiem (R), holowanie przez traktor i kombajn, NPC holują przyczepy/wózki.
