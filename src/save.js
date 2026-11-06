@@ -22,7 +22,8 @@ export function loadGame(afterFn){
   crop.set(unb64(o.crop).subarray(0,N));
   for(const k of ['vehicle','other','x','y','angle','headerOn','carts','tank','grain','stored','money','cut','time','elapsed','auger','augerOut'])if(o[k]!==undefined)state[k]=o[k];
   state.v=0;state.steer=0;state.tool=false;state.unloading=false;state.dumping=false;
-  for(const c of Object.values(state.carts)){c.hx=null}
+  state.carts={...INIT_CARTS(),...state.carts}; // zapisy z 0.5.x nie mają agregatu i siewnika
+  for(const c of Object.values(state.carts)){c.hx=null;c.working=false}
   let n=0;for(let i=0;i<N;i++)n+=crop[i]?1:0;state.cut=n;
   afterFn&&afterFn();return true;
  }catch(e){return false}

@@ -4,6 +4,7 @@ import {ctx,rect,line,hash,FLD,camera,VIEW,state,RT,clamp,WORLD,LIGHT,VEHICLES} 
 import {crop} from './world.js';
 import {drawMachineAt,drawTractorAt,drawCart,playerObbs,orientedShadow,drawRotated} from './vehicles.js';
 import {MAP,ROADS,pointBlocked,roadClearance} from './map.js';
+import {PIGPEN} from './map.js';
 import {obb,circle,collide} from './geometry.js';
 import {advanceCart,alignCart,cartObb} from './tow.js';
 import {setNpcObbs,refreshObstacles,obstacleDist,playerDist,pushOutObstacles} from './obstacles.js';
@@ -75,15 +76,56 @@ function drawRoe(g,x,y,heading,phase,running){
   rect(s,-4+st,-5,2,2,'#6e5239');rect(s,-4-st,4,2,'#6e5239');rect(s,3-st,-5,2,2,'#6e5239');rect(s,3+st,4,2,'#6e5239');
  });
 }
-function carTop(g,x,y,col,heading=0){
+// Mikro-czcionka 3×5 do napisu „POLICJA” na dachu radiowozu (czytelna po obróceniu o 90°).
+const GLYPH={P:'111101111100100',O:'111101101101111',L:'100100100100111',I:'111010010010111',C:'111100100100111',J:'001001001101111',A:'010101111101101'};
+function carTop(g,x,y,col,heading=0,police=false){
  if(!nearCam(x,y,64))return;
  orientedShadow(g,x,y,heading,[[10,23,0]],9,'#37474355');
  drawRotated(g,x,y,heading,s=>{
   for(const a of [-10,6]){rect(s,a,-15,4,8,'#2a302f');rect(s,a,11,4,9,'#2d3533')}
+  if(police){
+   rect(s,-9,-23,18,46,'#3a4a5c');rect(s,-8,-24,16,45,'#eef1ef');
+   rect(s,-8,-24,16,4,'#2a5ba8');rect(s,-8,17,16,4,'#2a5ba8');rect(s,-8,-10,2,26,'#2a5ba8');rect(s,6,-10,2,26,'#2a5ba8');
+   rect(s,-6,-13,12,10,'#5d7d8e');rect(s,-5,-12,10,4,'#9db6c2');
+   rect(s,-6,10,12,5,'#637c81');
+   // napis POLICJA wzdłuż dachu (czytany od tyłu do przodu)
+   let yy=14;for(const ch of 'POLICJA'){const gl=GLYPH[ch];for(let r=0;r<5;r++)for(let c=0;c<3;c++)if(gl[r*3+c]==='1')rect(s,-3+r,yy-c,1,1,'#1f4a99');yy-=4}
+   const on=Math.floor(RT.lifeT*4)%2;
+   rect(s,-6,-3,5,3,on?'#e0382f':'#7a2723');rect(s,1,-3,5,3,on?'#2f6fe0':'#243f7a');rect(s,-6,-4,12,1,'#2c2c2c');
+   rect(s,-6,-25,4,2,'#ecddb6');rect(s,2,-25,4,2,'#e8d4a8');rect(s,-6,20,4,2,'#c2362b');rect(s,2,20,4,2,'#c2362b');
+   return;
+  }
   rect(s,-9,-23,18,46,'#414944');rect(s,-8,-24,16,45,col);
   rect(s,-6,-13,12,12,'#668d97');rect(s,-5,-12,10,5,'#a1b6ba');
   rect(s,-6,10,12,6,'#637c81');rect(s,-6,20,4,2,'#d2b889');rect(s,2,20,4,2,'#bf9b71');
   rect(s,-6,-25,4,2,'#ecddb6');rect(s,2,-25,4,2,'#e8d4a8');
+ });
+}
+// Autobus PKS: biało-niebieski, długi (ok. 7,7 m), z lusterkami, wywietrznikami na dachu i tablicą kierunku.
+function busTop(g,x,y,heading=0){
+ if(!nearCam(x,y,90))return;
+ orientedShadow(g,x,y,heading,[[14,46,0]],13,'#37474355');
+ drawRotated(g,x,y,heading,s=>{
+  for(const yy of [-31,25]){rect(s,-16,yy,4,14,'#222a28');rect(s,12,yy,4,14,'#222a28')}
+  rect(s,-14,-47,28,94,'#2c3a4a');rect(s,-13,-46,26,92,'#eef0ec');
+  rect(s,-13,-46,26,3,'#f8faf7');rect(s,-13,-26,26,52,'#e4e7e2');
+  rect(s,-13,-30,3,60,'#2a5ba8');rect(s,10,-30,3,60,'#2a5ba8');rect(s,-13,-30,26,2,'#2a5ba8');rect(s,-13,28,26,2,'#2a5ba8');
+  rect(s,-10,-44,20,9,'#496a83');rect(s,-9,-43,18,4,'#8fb0c4');rect(s,-8,-46,16,2,'#d9a63a');   // szyba czołowa i tablica „PKS”
+  for(const yy of [-20,-4,12]){rect(s,-6,yy,12,8,'#c8cec9');rect(s,-5,yy+1,10,6,'#d9dfda');rect(s,-5,yy+1,10,1,'#fff')}
+  rect(s,-10,38,20,8,'#2f4a62');for(let k=0;k<3;k++)rect(s,-8,39+k*2,16,1,'#6c8ea8');
+  rect(s,-17,-38,3,5,'#222');rect(s,14,-38,3,5,'#222');
+  rect(s,-12,-47,4,2,'#ecddb6');rect(s,8,-47,4,2,'#e8d4a8');rect(s,-12,45,4,2,'#c2362b');rect(s,8,45,4,2,'#c2362b');
+ });
+}
+function drawPig(g,x,y,heading,phase,idle){
+ if(!nearCam(x,y,24))return;
+ blob(g,x,y,8,4,3);
+ drawRotated(g,x,y,heading,s=>{
+  rect(s,-8,-4,16,9,'#c78b8b');rect(s,-7,-4,14,8,'#e3a9a5');rect(s,-6,-4,12,2,'#efc2bd');
+  rect(s,7,-3,5,6,'#e3a9a5');rect(s,11,-2,2,4,'#c47d79');rect(s,7,-5,3,2,'#c98a86');rect(s,7,4,3,2,'#c98a86');
+  rect(s,-10,-1+Math.round(Math.sin(phase*3)),2,2,'#d38f8a');
+  const st=idle?0:Math.round(Math.sin(phase*6));
+  rect(s,-5+st,-6,2,2,'#b87874');rect(s,-5-st,5,2,2,'#b87874');rect(s,4-st,-6,2,2,'#b87874');rect(s,4+st,5,2,2,'#b87874');
  });
 }
 function birds(g,t){
@@ -103,9 +145,10 @@ function birds(g,t){
 // hh/hw: półwymiary obrysu (px), cy: przesunięcie środka obrysu wzdłuż osi pojazdu (+ = do tyłu), lane: odsunięcie od osi jezdni.
 const body=k=>{const [hw,hh,cy]=VEHICLES[k].npcBody;return{hw,hh,cy}};
 const SPECS={
- car:{speed:34,...body('car'),lane:12,allow:['road']},
- tractor:{speed:22,...body('tractor'),lane:16,allow:['road']},
- combine:{speed:14,...body('combine'),lane:8,allow:['road']}
+ car:{speed:42,...body('car'),lane:12,allow:['main','side']},
+ bus:{speed:34,...body('bus'),lane:14,allow:['main','side']},
+ tractor:{speed:22,...body('tractor'),lane:16,allow:['dirt','side','main']},
+ combine:{speed:14,...body('combine'),lane:16,allow:['dirt','side','main']}
 };
 const TURN_RATE=2.4; // rad/s
 const angDiff=(a,b)=>{let d=(b-a)%(Math.PI*2);if(d>Math.PI)d-=Math.PI*2;if(d<-Math.PI)d+=Math.PI*2;return d};
@@ -113,13 +156,13 @@ const inWorld=p=>p[0]>-10&&p[0]<WORLD.w+10&&p[1]>-10&&p[1]<WORLD.h+10;
 
 class Walker{
  constructor(kind,from,to,s,opts={}){
-  Object.assign(this,{kind,spec:SPECS[kind],from,to,s,v:0,travel:0,turns:0,dwell:0,steer:0,color:opts.color||'#8c9b95',seed:opts.seed||1,blocked:false,blockT:0,ghost:false,ghostT:0,pos:[0,0],obbShape:null});
+  Object.assign(this,{kind,spec:SPECS[kind],from,to,s,v:0,travel:0,turns:0,dwell:0,steer:0,color:opts.color||'#8c9b95',police:!!opts.police,seed:opts.seed||1,blocked:false,blockT:0,ghost:false,ghostT:0,pos:[0,0],obbShape:null});
   this.setEdge(from,to);this.heading=this.dirHeading;this.place();
   if(opts.cart){this.cart={kind:opts.cart,x:0,y:0,angle:0,load:opts.load||0,towedBy:'npc'};const H=this.hitch();alignCart(this.cart,H[0],H[1],this.heading)}
  }
  hitch(){const h=this.heading,k=VEHICLES[this.kind].hitch;return[this.pos[0]-Math.sin(h)*k,this.pos[1]+Math.cos(h)*k]}
  setEdge(from,to){
-  this.from=from;this.to=to;
+  this.from=from;this.to=to;this.edge=ROADS.neighbours(from).find(n=>n.to===to).edge;
   const A=ROADS.nodes[from],B=ROADS.nodes[to];
   this.len=Math.hypot(B[0]-A[0],B[1]-A[1]);
   this.dx=(B[0]-A[0])/this.len;this.dy=(B[1]-A[1])/this.len;
@@ -127,7 +170,7 @@ class Walker{
  }
  place(){
   const A=ROADS.nodes[this.from],cx=A[0]+this.dx*this.s,cy=A[1]+this.dy*this.s;
-  const h=this.heading,l=this.spec.lane;
+  const h=this.heading,l=this.edge.lane!=null?this.edge.lane:this.spec.lane;
   this.pos=[cx+Math.cos(h)*l,cy+Math.sin(h)*l];
   const back=this.spec.cy;
   this.obbShape=obb(this.pos[0]-Math.sin(h)*back,this.pos[1]+Math.cos(h)*back,this.spec.hw,this.spec.hh,h);
@@ -176,13 +219,14 @@ class Walker{
   this.setEdge(node,next.to);this.s=Math.max(0,overflow);
   if(!forward.length){
    if(outside)this.heading=this.dirHeading; // poza mapą — zawracamy niewidocznie
-   else this.dwell=1.4;                      // na podwórzu — wolne zawracanie
+   else this.dwell=this.kind==='bus'?7:1.4;  // autobus czeka na przystanku; inni zawracają powoli
   }
  }
  draw(){
   const [x,y]=this.pos;
   if(this.cart&&nearCam(this.cart.x,this.cart.y,110))drawCart(ctx,this.cart,this.travel);
-  if(this.kind==='car')carTop(ctx,x,y,this.color,this.heading);
+  if(this.kind==='car')carTop(ctx,x,y,this.color,this.heading,this.police);
+  else if(this.kind==='bus')busTop(ctx,x,y,this.heading);
   else if(this.kind==='tractor'){if(nearCam(x,y,80))drawTractorAt(ctx,x,y,this.heading,this.steer*.5,this.travel)}
   else if(nearCam(x,y,95))drawMachineAt(ctx,x,y,this.heading,this.steer*.5,this.travel,false,false);
  }
@@ -392,6 +436,7 @@ class Critter{
  }
  draw(){
   if(this.kind==='chicken')drawChicken(ctx,this.x,this.y,this.heading,this.state==='idle'&&Math.sin(this.phase*7)>.3?1:0);
+  else if(this.kind==='pig')drawPig(ctx,this.x,this.y,this.heading,this.phase,this.state==='idle');
   else if(this.kind==='dog')drawDog(ctx,this.x,this.y,this.heading,this.phase);
   else drawFox(ctx,this.x,this.y,this.heading,this.phase,this.state==='run');
  }
@@ -403,11 +448,14 @@ const critters=[
  new Critter({kind:'dog',seed:200,x:K.x-10,y:K.y+30,region:{x0:1062,y0:160,x1:1545,y1:450},near:{x:K.x+10,y:K.y+20,r:70},speed:22,runSpeed:44,idleMin:3,idleVar:8,
   avoid:(x,y)=>{const B=MAP.beds;return x>B.x-12&&x<B.x+B.w+12&&y>B.y-12&&y<B.y+B.h+12}})
 ];
+// Wybieg przy chlewiku: trzy świnie, które łażą po wybiegu i leżą przy korycie.
+const pigRegion={x0:PIGPEN.x0+8,y0:PIGPEN.y0+6,x1:PIGPEN.x1-6,y1:PIGPEN.y1-6};
+critters.push(...Array.from({length:3},(_,i)=>new Critter({kind:'pig',seed:300+i,x:PIGPEN.x0+18+i*12,y:PIGPEN.y0+40+i*34,region:pigRegion,speed:8,runSpeed:8,idleMin:3,idleVar:9})));
 const herd=Array.from({length:9},(_,i)=>new Cow(i));
 // Siatka nawigacyjna powstaje z reguł mapy: wolne od przeszkód i poza miejscami zaludnionymi.
 buildNav((x,y)=>x>30&&y>30&&x<WORLD.w-30&&y<WORLD.h-30&&!pointBlocked(x,y,12)&&!populated(x,y));
 const mkWild=(kind,x,y,seed,group,extra={})=>new Wild({kind,x,y,seed,group,...extra});
-const gA=new Group(268,90,11),gB=new Group(200,1210,23),gC=new Group(1100,1360,37),gD=new Group(620,1260,41),gF1=new Group(260,1200,53),gF2=new Group(400,80,59);
+const gA=new Group(268,90,11),gB=new Group(200,1210,23),gC=new Group(1100,1360,37),gD=new Group(620,1260,41),gF1=new Group(260,1200,53),gF2=new Group(400,80,59),gE=new Group(2060,1300,67);
 const wildlife=[
  mkWild('roe',268,90,11,gA),mkWild('roe',300,110,12,gA),
  mkWild('roe',200,1210,23,gB),
@@ -416,18 +464,29 @@ const wildlife=[
  mkWild('fox',260,1200,53,gF1,{speed:32,run:80,flee:120,leash:420,idleMin:3,idleVar:9}),
  mkWild('fox',400,80,59,gF2,{speed:32,run:80,flee:120,leash:420,idleMin:3,idleVar:9})
 ];
-const groups=[gA,gB,gC,gD,gF1,gF2];
+wildlife.push(mkWild('roe',2060,1300,67,gE),mkWild('roe',2090,1330,68,gE));
+const groups=[gA,gB,gC,gD,gF1,gF2,gE];
 
+// Ruch (0.6.0): główna droga — najwięcej aut, policja i autobus PKS; boczna — pojedyncze auta; polne — traktory i kombajn.
 const walkers=[
- new Walker('car','nS','jX',420,{color:'#8c9b95',seed:3}),
- new Walker('car','nN','jD',150,{color:'#a4684f',seed:5}),
- new Walker('tractor','nN','jD',60,{seed:7,cart:'grain',load:1.1}),
- new Walker('combine','nW','jX',120,{seed:11,cart:'header'})
+ new Walker('car','mW','jM',420,{color:'#8c9b95',seed:3}),
+ new Walker('car','mE','eS',260,{color:'#a4684f',seed:5}),
+ new Walker('car','eS','mE',60,{color:'#6f86a0',seed:13}),
+ new Walker('car','eS','jM',700,{police:true,seed:17}),
+ new Walker('bus','mW','jM',200,{seed:19}),
+ new Walker('car','jX','jD',120,{color:'#b9a56a',seed:23}),
+ new Walker('tractor','nW','jX',60,{seed:7,cart:'grain',load:1.1}),
+ new Walker('combine','eN','eS',260,{seed:11,cart:'header'}),
+ new Walker('tractor','tN','eN',200,{seed:29})
 ];
 const people=[
  new Person([[1165,436],[1170,480],[1240,556],[1360,600]],15,'#526c65',1,5,0),   // od drzwi domu przez furtkę na podwórze
  new Person([[1300,780],[1450,700],[1650,640]],13,'#a57660',1.1,6,0),             // po podwórku
- new Person([[1272,300],[1500,300]],11,'#7a8f5a',1,7,0)                          // przy grządkach
+ new Person([[1272,300],[1500,300]],11,'#7a8f5a',1,7,0),                         // przy grządkach
+ new Person([[1010,96],[988,128],[988,330],[988,440]],12,'#6b7fa0',1,8,0),        // od przystanku chodnikiem do wjazdu
+ new Person([[988,560],[988,900],[988,1300]],11,'#a4684f',1,6,0),                 // długi spacer chodnikiem
+ new Person([[988,1560],[988,1690],[908,1690]],13,'#8a6f9a',1,6,0),              // przejście dla pieszych na drodze bocznej
+ new Person([[1010,92],[1022,100]],6,'#c6a24a',1,12,0)                           // czeka na autobus
 ];
 
 // Wywoływane z kroku symulacji.

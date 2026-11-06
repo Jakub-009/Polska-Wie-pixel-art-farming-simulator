@@ -6,6 +6,7 @@
 //  decorHigh  — dachy i korony drzew (NAD pojazdami)
 import {WORLD,FLD,N,hash,rect,line,poly,shadow,LIGHT} from './core.js';
 import {MAP,roadClearance} from './map.js';
+import {SILOS,PIT} from './map.js';
 import {paintSiloLow,paintSiloHigh} from './silo.js';
 
 const mk=(w,h)=>{const c=document.createElement('canvas');c.width=w;c.height=h;const g=c.getContext('2d');g.imageSmoothingEnabled=false;return[c,g]};
@@ -39,7 +40,7 @@ function paintGrass(){
  for(let i=0;i<820;i++){let x=(hash(i,8)*128)|0,y=(hash(i,19)*128)|0,p=hash(i,27);rect(gg,x,y,p>.75?2:1,1,['#9db180','#718b6b','#bdba83','#7e9c70','#aab784'][Math.floor(hash(i,38)*5)])}
  g.fillStyle=g.createPattern(grass,'repeat');g.fillRect(0,0,WORLD.w,WORLD.h);
  poly(g,[[0,0],[540,0],[465,128],[0,149]],'#9faf70');for(let i=0;i<34;i++){let y=i*4;line(g,0,y,480-y*.18,y+7,'#b4b681',1)}
- poly(g,[[0,1020],[1050,1014],[1050,1600],[0,1600]],'#b6aa76');for(let i=0;i<92;i++)line(g,0,1028+i*6,1014,1030+i*6,'#c6bb89',1);
+ poly(g,[[0,1020],[1050,1014],[1050,1690],[0,1690]],'#b6aa76');for(let i=0;i<110;i++)line(g,0,1028+i*6,1014,1030+i*6,'#c6bb89',1);
 }
 function neighbourField(f){
  const {x,y,w,h,kind,seed}=f;
@@ -69,29 +70,82 @@ function paintDitch(){
  for(let i=0;i<90;i++){let y=174+i*7,x=202+(hash(i,91)*8|0);if(i%4!==0)rect(g,x,y,2+(i%3),2,['#6d925c','#93aa6f','#527c58'][i%3])}
  rect(g,FLD.x-17,FLD.y-17,FLD.w+34,FLD.h+34,'#90a475');rect(g,FLD.x-8,FLD.y-8,FLD.w+16,FLD.h+16,'#a1a875');
 }
-// Drogi z grafu: najpierw obrzeża wszystkich krawędzi, potem wypełnienie — skrzyżowania stapiają się bez łat.
+// Drogi z grafu (0.6.0): wszystkie odcinki są osiowe, więc malujemy je prostokątami (ostre krawędzie).
+// Warstwy: pobocze → krawężnik/skraj → wypełnienie polne → asfalt boczny → asfalt główny; skrzyżowania stapiają się bez łat.
+const disc=(g,cx,cy,r,c)=>{for(let dy=-r;dy<=r;dy++){const w=Math.floor(Math.sqrt(r*r-dy*dy+.01));rect(g,cx-w,cy+dy,w*2,1,c)}};
+const edgeRect=(e,add)=>{
+ const A=MAP.nodes[e.a],B=MAP.nodes[e.b],h=(e.w+add)/2;
+ if(A[0]===B[0])return[A[0]-h,Math.min(A[1],B[1]),h*2,Math.abs(B[1]-A[1])];
+ return[Math.min(A[0],B[0]),A[1]-h,Math.abs(B[0]-A[0]),h*2];
+};
+const ASPH='#767b7f',ASPH2=['#6c7175','#81868a','#70757a'];
 function paintRoads(){
- const {nodes,edges,degree}=MAP.roads;
- const P=e=>[nodes[e.a],nodes[e.b]];
- g.lineCap='round';g.lineJoin='round';
- for(const [col,add] of [['#829368',13],['#99886b',5],['#b8a47d',0]]){
-  for(const e of edges){const [A,B]=P(e);g.strokeStyle=col;g.lineWidth=e.w+add;g.beginPath();g.moveTo(A[0],A[1]);g.lineTo(B[0],B[1]);g.stroke()}
+ const E=MAP.roads.edges,isA=e=>e.kind==='main'||e.kind==='side';
+ for(const e of E){const [x,y,w,h]=edgeRect(e,isA(e)?14:14);rect(g,x,y,w,h,'#829368')}
+ disc(g,MAP.bulb.x,MAP.bulb.y,MAP.bulb.r+7,'#829368');
+ for(const e of E){const [x,y,w,h]=edgeRect(e,6);rect(g,x,y,w,h,isA(e)?'#b8b7ac':'#99886b')}
+ disc(g,MAP.bulb.x,MAP.bulb.y,MAP.bulb.r+3,'#b8b7ac');
+ for(const kind of ['dirt','drive','side','main']){
+  for(const e of E.filter(q=>q.kind===kind)){const [x,y,w,h]=edgeRect(e,0);rect(g,x,y,w,h,kind==='dirt'||kind==='drive'?'#b8a47d':ASPH)}
+  if(kind==='side')disc(g,MAP.bulb.x,MAP.bulb.y,MAP.bulb.r,ASPH);
  }
- g.lineCap='butt';
- // koleiny: urywane przy skrzyżowaniach, żeby nie przecinały poprzecznej drogi
- for(const e of edges){
-  const [A,B]=P(e),dx=B[0]-A[0],dy=B[1]-A[1],len=Math.hypot(dx,dy),ux=dx/len,uy=dy/len;
-  const trim=k=>degree[k]>2?Math.max(...edges.filter(q=>q.a===k||q.b===k).map(q=>q.w))/2+3:0;
-  const ta=trim(e.a),tb=trim(e.b);
+ // faktura asfaltu: ziarno, łaty, pęknięcia
+ for(const e of E.filter(isA)){
+  const [x,y,w,h]=edgeRect(e,0);
+  for(let i=0;i<w*h/9;i++){const px=x+hash(i,301+w)*(w-1)|0,py=y+hash(i,302+h)*(h-1)|0;rect(g,px,py,1+(i%5===0),1,ASPH2[i%3])}
+  for(let i=0;i<w*h/1800;i++){const px=x+hash(i,310)*(w-14)|0,py=y+hash(i,311)*(h-8)|0;rect(g,px,py,10+(i%4)*4,5+(i%3)*2,'#6a6f73')}
+ }
+ // koleiny polne: dwie ciemne smugi wzdłuż środka każdej drogi polnej (urywane przy skrzyżowaniach)
+ const {nodes,degree}=MAP.roads;
+ for(const e of E.filter(q=>q.kind==='dirt')){
+  const A=nodes[e.a],B=nodes[e.b],vert=A[0]===B[0],L=Math.hypot(B[0]-A[0],B[1]-A[1]);
+  const ta=degree[e.a]>2?e.w/2+3:0,tb=degree[e.b]>2?e.w/2+3:0;
   for(const off of [-e.w*.22,e.w*.22]){
-   g.strokeStyle='#927e60';g.lineWidth=1.6;g.beginPath();
-   g.moveTo(A[0]+ux*ta-uy*off,A[1]+uy*ta+ux*off);g.lineTo(B[0]-ux*tb-uy*off,B[1]-uy*tb+ux*off);g.stroke();
+   if(vert)rect(g,A[0]+off-1,Math.min(A[1],B[1])+ta,2,L-ta-tb,'#927e60');
+   else rect(g,Math.min(A[0],B[0])+ta,A[1]+off-1,L-ta-tb,2,'#927e60');
   }
  }
- for(let i=0;i<360;i++){
+ for(let i=0;i<520;i++){
   const x=(hash(i,202)*WORLD.w)|0,y=(hash(i,203)*WORLD.h)|0;
-  if(roadClearance(x,y)<-4)rect(g,x,y,1+(i%3),1,i%3===0?'#d6c093':'#917f61');
+  if(roadClearance(x,y,['dirt','drive'])<-4&&roadClearance(x,y,['main','side'])>2)rect(g,x,y,1+(i%3),1,i%3===0?'#d6c093':'#917f61');
  }
+ // oznaczenia drogi głównej: biała przerywana oś i ciągłe linie krawędziowe
+ for(const e of E.filter(q=>q.kind==='main')){
+  const A=nodes[e.a],B=nodes[e.b],x0=Math.min(A[0],B[0]),L=Math.abs(B[0]-A[0]),yc=A[1];
+  for(let xx=x0;xx<x0+L;xx+=40){
+   if(Math.abs(xx+10-945)<42)continue;      // brak linii na skrzyżowaniu z boczną
+   rect(g,xx,yc-1,22,2,'#e6e4d8');
+  }
+  rect(g,x0,yc-e.w/2+4,L,2,'#dcdacd');rect(g,x0,yc+e.w/2-6,L,2,'#dcdacd');
+ }
+ // skraj drogi bocznej: cienka linia, chodnik, przejście dla pieszych
+ for(const e of E.filter(q=>q.kind==='side')){
+  const A=nodes[e.a],B=nodes[e.b],y0=Math.min(A[1],B[1]),L=Math.abs(B[1]-A[1]);
+  rect(g,A[0]-e.w/2+3,y0,1,L,'#9aa0a0');rect(g,A[0]+e.w/2-4,y0,1,L,'#9aa0a0');
+  for(let yy=y0;yy<y0+L;yy+=34)if(Math.abs(yy+8-1690)>30&&Math.abs(yy+8-501)>40)rect(g,A[0]-1,yy,2,14,'#d4d2c6');
+ }
+ paintSidewalk();
+ const Z=MAP.zebra;
+ for(let x=Z.x-Z.w/2+4;x<Z.x+Z.w/2-4;x+=9)rect(g,x,Z.y-Z.h/2,5,Z.h,'#e9e7dc');
+ rect(g,Z.x-Z.w/2,Z.y-Z.h/2-3,Z.w,1,'#d4d2c6');rect(g,Z.x-Z.w/2,Z.y+Z.h/2+2,Z.w,1,'#d4d2c6');
+}
+// Chodnik z płytek po wschodniej stronie drogi bocznej oraz plac przystankowy; przerwany przy wjeździe na podwórze.
+function paintSidewalk(){
+ const S=MAP.sidewalk,w=S.x1-S.x0;
+ const slab=(x,y,ww,hh)=>{
+  rect(g,x,y,ww,hh,'#c6c2b4');
+  for(let i=0;i<ww*hh/26;i++)rect(g,x+hash(i,330+x)*(ww-1)|0,y+hash(i,331+y)*(hh-1)|0,1,1,i%2?'#b4b0a2':'#d3cfc1');
+  for(let yy=y;yy<y+hh;yy+=12)rect(g,x,yy,ww,1,'#aaa698');
+  rect(g,x+ww-1,y,1,hh,'#aaa698');
+ };
+ slab(S.x0,S.y0,w,468-S.y0);slab(S.x0,534,w,S.y1-534);
+ slab(996,40,36,78);                                  // plac przystankowy
+ rect(g,S.x1,S.y0,3,468-S.y0,'#a9b07f');rect(g,S.x1,534,3,S.y1-534,'#a9b07f');
+ // wjazd na podwórze: utwardzenie z kostki
+ const x0=974,y0=468,w2=80,h2=66;
+ rect(g,x0,y0,w2,h2,'#b3a58a');
+ for(let yy=y0;yy<y0+h2;yy+=6){const off=((yy-y0)/6)%2?5:0;for(let xx=x0-off;xx<x0+w2;xx+=10){rect(g,Math.max(x0,xx),yy,1,6,'#9e9078');}rect(g,x0,yy,w2,1,'#9e9078')}
+ for(let i=0;i<150;i++)rect(g,x0+hash(i,340)*w2|0,y0+hash(i,341)*h2|0,2,1,i%2?'#c4b79d':'#a39579');
 }
 function paintFarm(){
  const F=MAP.farm,G=MAP.garden,B=MAP.beds;
@@ -106,6 +160,20 @@ function paintFarm(){
   g.fillStyle='#9a8b67';g.beginPath();g.ellipse(x,y,rx,ry,0,0,Math.PI*2);g.fill();
   for(let i=0;i<14;i++){rect(g,x+(hash(i,x)-.5)*rx*1.6,y+(hash(i,y)-.5)*ry*1.6,2,1,'#867755')}
   if(wet){g.fillStyle='#7ea3a0';g.beginPath();g.ellipse(x+3,y,rx*.42,ry*.42,0,0,Math.PI*2);g.fill();g.fillStyle='#bcd2c4';g.beginPath();g.ellipse(x,y-ry*.12,rx*.15,ry*.1,0,0,Math.PI*2);g.fill()}
+ }
+ // betonowy plac przy silosach i koszu zasypowym (płyty co 24 px, spoiny, plamy)
+ {const X=1672,Y=596,W=216,H=178;
+  rect(g,X-2,Y-2,W+4,H+4,'#9d9a8d');rect(g,X,Y,W,H,'#bab7aa');
+  for(let xx=X;xx<X+W;xx+=24)rect(g,xx,Y,1,H,'#a29f93');for(let yy=Y;yy<Y+H;yy+=24)rect(g,X,yy,W,1,'#a29f93');
+  for(let i=0;i<260;i++)rect(g,X+hash(i,350)*(W-2)|0,Y+hash(i,351)*(H-2)|0,1+(i%3===0),1,i%2?'#c9c6b9':'#a9a699');
+  for(let i=0;i<9;i++)rect(g,X+hash(i,352)*(W-20)|0,Y+hash(i,353)*(H-10)|0,14+(i%3)*6,3+(i%2),'#aaa79a');
+ }
+ // wybieg świń: ubite błoto, słoma, koryto
+ {const P=MAP.pigpen,W=P.x1-P.x0,H=P.y1-P.y0;
+  rect(g,P.x0,P.y0,W,H,'#85694a');
+  for(let i=0;i<190;i++)rect(g,P.x0+hash(i,360)*(W-3)|0,P.y0+hash(i,361)*(H-2)|0,2+(i%3),1,['#735a3f','#957752','#6a533a','#a5875f'][i%4]);
+  for(let i=0;i<14;i++)rect(g,P.x0+3+hash(i,362)*(W-14)|0,P.y0+hash(i,363)*(H-6)|0,6+(i%3)*2,1,'#d2bd7e');
+  rect(g,P.x0+4,P.y1-12,22,6,'#5e4a39');rect(g,P.x0+5,P.y1-11,20,4,'#8c7a62');rect(g,P.x0+6,P.y1-10,18,2,'#b9a47a');
  }
  // ogródek: trawnik, grządki, ścieżki
  rect(g,G.x,G.y,G.w,G.h,'#8fa56b');
@@ -128,8 +196,22 @@ const mixc=(a,b,t)=>{const A=rgb(a),B=rgb(b);return`rgb(${Math.round(A[0]+(B[0]-
 // Pszenica: rzędy poziome co 4 px, ciemna bruzda i jasne kłosy tworzące kreskowane smugi (bez pionowego „kodu kreskowego”).
 // Ściernisko: niski kontrast, krótkie ścięte łodygi w tych samych rzędach.
 function fieldTile(i,j){
- const k=j*FLD.n+i,x=i*FLD.t,y=j*FLD.t,harvested=crop[k]===1;
+ const k=j*FLD.n+i,x=i*FLD.t,y=j*FLD.t,st=crop[k],harvested=st===1;
  const n=vn(i/5,j/5)*.65+vn(i/1.6,j/1.6)*.35;
+ if(st>=2){ // zaorane (2), obsiane (3), wschody (4), młode zboże (5)
+  rect(fc,x,y,8,8,mixc('#7d5f40','#8e6d49',n));
+  for(const ry of [0,4]){
+   rect(fc,x,y+ry,8,1,mixc('#9a7852','#a98559',n));
+   rect(fc,x,y+ry+2,8,2,mixc('#5f4630','#6d523a',n));
+   for(let xx=0;xx<8;xx+=2){
+    const h=hash(i*8+xx,j*8+ry,5);
+    if(st===3&&h>.55)rect(fc,x+xx,y+ry+1,1,1,'#d8c284');
+    if(st===4&&h>.35)rect(fc,x+xx,y+ry,1+(h>.8),2,h>.7?'#8cb458':'#6f9a47');
+    if(st===5){rect(fc,x+xx,y+ry,2,3,h>.5?'#5d9a43':'#4b8438');if(h>.7)rect(fc,x+xx,y+ry,2,1,'#86b85a')}
+   }
+  }
+  return;
+ }
  if(harvested){
   rect(fc,x,y,8,8,mixc('#b3a073','#c0ad7f',n));
   for(const ry of [0,4]){
@@ -243,11 +325,73 @@ function pastureFence(x0,y0,x1,y1){
  for(let y=y0;y<y1;y+=23){post(x0,y);post(x1,y)}
  for(const x of [x0,x1])for(const y of [y0,y1])post(x,y);
 }
-function pole(x,y,nest){poly(dl,[[x,y],[x+5,y],[x+LIGHT.x*55+5,y+LIGHT.y*55],[x+LIGHT.x*55-3,y+LIGHT.y*55]],'#57674b66');rect(dl,x-3,y-28,6,42,'#75664e');rect(dl,x-5,y-26,2,39,'#b19b73');rect(dl,x-11,y-19,22,3,'#665b48');rect(dl,x-8,y-20,3,3,'#c8be9b');rect(dl,x+6,y-20,3,3,'#c8be9b');if(nest){rect(dl,x-12,y-31,24,6,'#69553d');rect(dl,x-9,y-35,20,7,'#8d6e47');rect(dl,x+1,y-43,5,8,'#e5e6d4');rect(dl,x+1,y-45,5,3,'#f8f0dd');rect(dl,x+6,y-39,8,2,'#b16a42')}}
-
+// Słup energetyczny (0.6.0): betonowy, z obrysem 1 px jak reszta świata; trzon pod pojazdami, poprzeczka i gniazdo nad nimi.
+const DARK='#34382f';
+function pole(x,y,nest){
+ poly(dl,[[x-2,y+12],[x+3,y+12],[x+LIGHT.x*52+3,y+LIGHT.y*52+12],[x+LIGHT.x*52-3,y+LIGHT.y*52+12]],'#4a5f4a66');
+ outlinedDraw(dl,x,y,G=>{
+  rect(G,-3,-26,5,40,'#a8a89b');rect(G,-3,-26,1,40,'#c9c9bd');rect(G,1,-26,1,40,'#8a8a7f');
+  for(let k=-22;k<10;k+=8)rect(G,-3,k,5,1,'#92928a');
+  rect(G,-4,10,7,4,'#7f7f74');
+ },DARK);
+ outlinedDraw(dh,x,y,G=>{
+  rect(G,-12,-22,24,3,'#5b5f58');rect(G,-12,-22,24,1,'#7a7e75');
+  rect(G,-2,-19,5,2,'#4d514b');
+  for(const ix of [-10,8]){rect(G,ix,-27,3,6,'#dde3dc');rect(G,ix,-28,3,1,'#42504b');rect(G,ix+1,-26,1,2,'#fff')}
+  for(const ix of [-4,2]){rect(G,ix,-25,3,4,'#dde3dc');rect(G,ix,-26,3,1,'#42504b')}
+ },DARK);
+ if(nest)stork(x,y);
+}
+// Gniazdo z gałązek na poprzeczce i bocian: spójne z resztą (obrys, cień, paleta).
+function stork(x,y){
+ outlinedDraw(dh,x,y,G=>{
+  for(let yy=-8;yy<=0;yy++){const w=Math.round(13*Math.sqrt(1-((yy+4)/5)**2));rect(G,-w,-30+yy,w*2,1,yy<-3?'#8d6e47':'#69553d')}
+  for(let i=0;i<34;i++){const px=-12+hash(i,77)*24|0,py=-37+hash(i,78)*8|0;rect(G,px,py,3+(i%3),1,['#a98457','#6f5538','#c3a06b'][i%3])}
+  // bocian (głową w prawo): biały korpus, czarne lotki, czerwony dziób i nogi
+  rect(G,-5,-47,9,9,'#f3f1e7');rect(G,-6,-44,5,5,'#2e2e2e');rect(G,-5,-47,9,1,'#fffffc');
+  rect(G,3,-52,3,8,'#f3f1e7');rect(G,2,-54,5,3,'#f3f1e7');rect(G,6,-53,8,2,'#c8402b');
+  rect(G,-3,-38,1,6,'#c8402b');rect(G,1,-38,1,6,'#c8402b');
+ },DARK);
+}
+// Latarnia uliczna: słup z wysięgnikiem nad jezdnię (wysięgnik i oprawa w warstwie nadziemnej).
+function lamp(x,y){
+ poly(dl,[[x-1,y+3],[x+2,y+3],[x+LIGHT.x*40+2,y+LIGHT.y*40+3],[x+LIGHT.x*40-1,y+LIGHT.y*40+3]],'#4a5f4a55');
+ outlinedDraw(dl,x,y,G=>{rect(G,-2,-1,4,5,'#4f5650');rect(G,-1,-1,2,4,'#7a837b')},DARK);
+ outlinedDraw(dh,x,y,G=>{
+  rect(G,-2,-20,3,19,'#6b756d');rect(G,-1,-20,1,19,'#8f998f');
+  rect(G,-24,-22,24,2,'#5d665f');rect(G,-26,-24,9,5,'#454d47');rect(G,-25,-23,7,3,'#f1e9b8');rect(G,-24,-23,2,1,'#fffbe0');
+ },DARK);
+}
+function stopSign(x,y){
+ poly(dl,[[x,y+2],[x+2,y+2],[x+LIGHT.x*12+2,y+LIGHT.y*12+2],[x+LIGHT.x*12,y+LIGHT.y*12+2]],'#4a5f4a55');
+ outlinedDraw(dl,x,y,G=>{rect(G,-1,-12,2,16,'#8a8e87')},DARK);
+ outlinedDraw(dh,x,y,G=>{rect(G,-6,-22,12,11,'#c2362b');rect(G,-5,-21,10,9,'#d9453a');rect(G,-4,-18,8,2,'#f4efe2');rect(G,-5,-21,10,1,'#ef7a6c')},DARK);
+}
+// Przystanek PKS: wiata ze szklanymi ścianami, ławka, słupek z tabliczką.
+function busStop(){
+ const B=MAP.busstop,{x,y,w,h}=B;
+ shadow(dl,x,y,w,h,10);
+ rect(dl,x+2,y+2,w-4,h-4,'#b6b4a6');                  // posadzka pod wiatą
+ outlinedDraw(dl,x,y,G=>{rect(G,2,6,2,h-12,'#6e4a34');rect(G,3,7,1,h-14,'#a97a52')},DARK); // ławka
+ outlinedDraw(dh,x,y,G=>{
+  rect(G,0,0,w,h,'#d2d6d0');rect(G,2,2,w-4,h-4,'#4f7f9c');rect(G,3,3,w-6,5,'#6c9db8');   // dach z poliwęglanu
+  rect(G,0,0,w,2,'#e9ece6');rect(G,w-2,0,2,h,'#7a8a86');
+  for(const py of [3,h-5])rect(G,-1,py,2,3,'#3a403c');
+ },DARK);
+ const sg=B.sign;
+ outlinedDraw(dl,sg.x,sg.y,G=>{rect(G,-1,-14,2,18,'#8a8e87')},DARK);
+ outlinedDraw(dh,sg.x,sg.y,G=>{rect(G,-7,-25,14,12,'#2f66a8');rect(G,-6,-24,12,10,'#3b79c4');rect(G,-4,-22,8,2,'#f4efe2');rect(G,-4,-19,8,2,'#f4efe2');rect(G,-4,-16,5,1,'#f4efe2')},DARK);
+}
+// Chlewik z wybiegiem: dach z lekkim wywietrznikiem, drzwi w stronę wybiegu.
+function pigsty(b){
+ roof(dl,dh,b.x,b.y,b.w,b.h,b.color);
+ rect(dh,b.x+b.w-22,b.y+14,12,10,'#a8a08a');rect(dh,b.x+b.w-20,b.y+16,8,6,'#cbbea3');
+ rect(dh,b.x+14,b.y+b.h-12,22,8,'#5e4a39');rect(dh,b.x+16,b.y+b.h-10,18,4,'#2f2a26');   // drzwi na wybieg
+}
 function fence(f){
  const st=f.style==='inner'
   ?{r1:'#cfc6a6',r2:'#e3dbc0',post:'#b9aa80',cap:'#f1e8cc',step:20}
+  :f.style==='pen'?{r1:'#8c6c48',r2:'#b08d62',post:'#6b4f33',cap:'#d3b385',step:14}
   :{r1:'#6f5236',r2:'#98764d',post:'#5f4329',cap:'#c9a574',step:24};
  const hor=f.y1===f.y2,L=Math.hypot(f.x2-f.x1,f.y2-f.y1);
  for(const [d,c] of [[0,st.r1],[3,st.r2]]){
@@ -259,19 +403,22 @@ function fence(f){
 }
 function paintObjects(){
  const P=MAP.props;
- for(const b of MAP.buildings){if(b.type==='house')house(b);else if(b.type==='barn')barn(b);else wiata(b)}
+ for(const b of MAP.buildings){if(b.type==='house')house(b);else if(b.type==='barn')barn(b);else if(b.type==='pigsty')pigsty(b);else wiata(b)}
  paintSiloLow(dl);paintSiloHigh(dh);
  for(let i=0;i<5;i++){rect(dl,P.laundry.x+i*11,P.laundry.y,7,5,['#d6c6a2','#d9e6d4','#7396b0','#b86156','#d7d1b7'][i]);rect(dl,P.laundry.x+1+i*11,P.laundry.y+1,2,2,'#e9e3ce')}
  const k=P.kennel;rect(dl,k.x+4,k.y+4,k.w,k.h,'#42564255');rect(dl,k.x,k.y,k.w,k.h,'#6f4f38');rect(dl,k.x+1,k.y+1,k.w-2,k.h-2,'#a5714f');rect(dl,k.x+k.w/2-1,k.y+1,2,k.h-2,'#7d5238');rect(dl,k.x+k.w-4,k.y+k.h-1,5,3,'#2f2a26');
  for(const p of P.poles)pole(p.x,p.y,p.nest);
  // Przewody: dwa tory między końcami poprzeczek, z lekkim zwisem; warstwa nadziemna.
  const pl=P.poles;
- for(let i=0;i<pl.length-1;i++)for(const dx of [-8,7]){
-  const x1=pl[i].x+dx,y1=pl[i].y-19,x2=pl[i+1].x+dx,y2=pl[i+1].y-19;
+ for(let i=0;i<pl.length-1;i++)for(const dx of [-9,9]){
+  const x1=pl[i].x+dx,y1=pl[i].y-27,x2=pl[i+1].x+dx,y2=pl[i+1].y-27;
   dh.strokeStyle='#3f4a3d';dh.lineWidth=1;dh.beginPath();dh.moveTo(x1,y1);dh.quadraticCurveTo((x1+x2)/2,(y1+y2)/2+6,x2,y2);dh.stroke();
  }
  const s=P.sign;rect(dl,s.x+8,s.y+10,3,19,'#7c7155');rect(dl,s.x,s.y,47,13,'#e1d6b0');rect(dl,s.x+1,s.y+1,45,11,'#607c55');rect(dl,s.x+38,s.y+4,5,3,'#eee0b5');
  for(const f of MAP.fences)fence(f);
+ for(const l of MAP.lamps)lamp(l.x,l.y);
+ for(const q of MAP.signs)stopSign(q.x,q.y);
+ busStop();
  const pa=MAP.pasture;pastureFence(pa.x0,pa.y0,pa.x1,pa.y1);
  for(const b of MAP.bales)bale(b);
  for(const s2 of MAP.shrubs)shrub(s2);

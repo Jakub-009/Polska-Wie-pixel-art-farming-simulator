@@ -2,7 +2,7 @@
 // 0.4.0: mapa jako dane + kolizje OBB ze ślizganiem, pojazdy NPC na grafie dróg, poprawki 0.3.3.
 import {INIT_OTHER,INIT_CARTS,SETTINGS,START,C,ctx,VIEW,$,clamp,lerp,WORLD,FLD,N,keys,state,camera,RT,fx,COMBINE_SCALE,VEH,toast,FIELD_HA,DEBUG,active} from './core.js';
 import {crop,fieldTile,tc,buildWorld} from './world.js';
-import {harvest,updateTracks,particle} from './harvest.js';
+import {harvest,updateTracks,particle,workSoil} from './harvest.js';
 import {worldOffset,playerObbs,otherObbs} from './vehicles.js';
 import {drawWorld} from './render.js';
 import {hud} from './ui.js';
@@ -66,7 +66,7 @@ function step(dt){
  RT.warnT-=dt;RT.fullT-=dt;RT.spillT-=dt;RT.saveT=(RT.saveT||0)+dt;
  if(RT.saveT>20){RT.saveT=0;saveGame()}
  RT.reelSpin+=state.tool?dt*12:0;RT.wheelTravel+=state.v*dt;RT.lifeT+=dt;
- harvest(dt);updateTracks(dt);
+ harvest(dt);workSoil();updateTracks(dt);
  RT.dustT-=dt;
  if(RT.dustT<=0&&Math.abs(state.v)>5){
   RT.dustT=.1;
@@ -153,7 +153,7 @@ window.__farmDebug={
  // Test przejezdności: BFS po stanach (komórka 8 px × 8 kierunków). Ruch: do przodu/do tyłu wzdłuż kierunku albo obrót w miejscu;
  // pozycja dozwolona, gdy żaden z obrysów kombajnu (z hederem lub bez) nie koliduje ze stałymi przeszkodami.
  reach:(withHeader,fx,fy,targets)=>{
-  const S=8,X0=860,X1=1960,Y0=0,Y1=1150,W=Math.ceil((X1-X0)/S),H=Math.ceil((Y1-Y0)/S),K=COMBINE_SCALE;
+  const S=8,X0=0,X1=2300,Y0=0,Y1=1840,W=Math.ceil((X1-X0)/S),H=Math.ceil((Y1-Y0)/S),K=COMBINE_SCALE;
   const pose=(x,y,a)=>{const c=Math.cos(a),s=Math.sin(a),off=(ly)=>[x-s*ly*K,y+c*ly*K];const [f1,f2]=off(-22.5),[r1,r2]=off(23),[h1,h2]=off(-54);
    const o=[obb(f1,f2,26*K,22.5*K,a),obb(r1,r2,22*K,23*K,a)];if(withHeader)o.push(obb(h1,h2,44*K,9*K,a));return o};
   const ok=(x,y,a)=>{if(x<X0+30||x>X1-30||y<38||y>Y1)return false;const near=nearbyColliders(x,y,110);for(const o of pose(x,y,a))for(const c of near)if(collide(o,c))return false;return true};

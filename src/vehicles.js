@@ -180,8 +180,46 @@ function drawHeaderCart(g,c,travel){
   s.save();s.rotate(Math.PI/2);s.translate(0,54);s.drawImage(headerCv,-60,-69);drawHeaderDynamic(s,false,0);s.restore();
  });
 }
+// Agregat uprawowy (kultywator z wałem strunowym) i siewnik zawieszany: szersze od traktora, jak prawdziwe narzędzia.
+function drawTiller(g,c,travel){
+ const d=CARTS.tiller;
+ orientedShadow(g,c.x,c.y,c.angle,[[d.hw,d.hh,0]],8);
+ drawRotated(g,c.x,c.y,c.angle,s=>{
+  const w=!!c.working;
+  for(let i=0;i<=22;i++){const x=Math.round(i/22*9);rect(s,-x-1,-62+i,2,2,'#3a3a36');rect(s,x,-62+i,2,2,'#3a3a36')}
+  rect(s,-2,-65,5,4,'#23201d');rect(s,-1,-64,3,2,'#6b655a');
+  // belka nośna i rama
+  rect(s,-29,-12,58,9,'#25404f');rect(s,-28,-11,56,7,'#3f6a82');rect(s,-28,-11,56,2,'#6c9ab2');
+  rect(s,-26,-4,3,18,'#25404f');rect(s,23,-4,3,18,'#25404f');rect(s,-1,-20,3,12,'#25404f');
+  // dwa rzędy zębów kultywatora
+  for(let k=0;k<9;k++){const x=-26+k*6.5;rect(s,x,0+(k%2)*5,2,w?7:4,w?'#2a2b27':'#6f726c');rect(s,x,(k%2)*5+(w?7:4),2,1,w?'#8b7556':'#9a9d95')}
+  // wał strunowy z tyłu
+  rect(s,-29,16,58,6,'#2e3834');rect(s,-28,17,56,4,'#65726a');for(let x=-27;x<28;x+=4)rect(s,x,17,1,4,'#8e9b91');
+  for(const side of [-1,1]){rect(s,side*27-2,15,4,8,'#222a27')}
+  if(w)rect(s,-27,24,54,2,'#4a3a29');
+ });
+}
+function drawSeeder(g,c,travel){
+ const d=CARTS.seeder;
+ orientedShadow(g,c.x,c.y,c.angle,[[d.hw,d.hh,0]],10);
+ drawRotated(g,c.x,c.y,c.angle,s=>{
+  const w=!!c.working;
+  for(let i=0;i<=22;i++){const x=Math.round(i/22*9);rect(s,-x-1,-64+i,2,2,'#3a3a36');rect(s,x,-64+i,2,2,'#3a3a36')}
+  rect(s,-2,-67,5,4,'#23201d');rect(s,-1,-66,3,2,'#6b655a');
+  // rama, skrzynia nasienna z pokrywą, rurki rozsiewające
+  rect(s,-27,-6,54,6,'#4b2d22');rect(s,-26,-5,52,4,'#7d4a37');
+  rect(s,-24,-20,48,18,'#235033');rect(s,-23,-19,46,16,'#3f7a4a');rect(s,-23,-19,46,3,'#66a56d');
+  for(let x=-18;x<=18;x+=12)rect(s,x,-15,8,8,'#2b5d3a');
+  rect(s,-24,-21,48,1,'#9fd29a');rect(s,-24,-3,48,1,'#1c3c28');
+  for(let k=0;k<9;k++){const x=-24+k*6;rect(s,x+1,0,1,w?16:10,'#56524a');if(w)rect(s,x,16,3,2,'#c9b27a')}
+  rect(s,-27,16,54,5,'#2e3834');rect(s,-26,17,52,3,'#65726a');
+  for(const side of [-1,1])rect(s,side*25-2,14,4,10,'#222a27');
+  if(w)rect(s,-26,24,52,2,'#6a5438');
+  rect(s,-3,-13,6,3,w?'#6ee36e':'#e3a64d');   // lampka: pracuje / podniesiony
+ });
+}
 function drawCart(g,c,travel=0){
- if(c.kind==='grain')drawGrainCart(g,c,travel);else drawHeaderCart(g,c,travel);
+ if(c.kind==='grain')drawGrainCart(g,c,travel);else if(c.kind==='tiller')drawTiller(g,c,travel);else if(c.kind==='seeder')drawSeeder(g,c,travel);else drawHeaderCart(g,c,travel);
 }
 // Pojazdy gracza i drugi pojazd: najpierw wózki, potem traktor, na końcu kombajn (jego rura jest nad przyczepą).
 function drawAllVehicles(){

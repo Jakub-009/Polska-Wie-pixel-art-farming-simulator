@@ -4,9 +4,12 @@ import {saveSettings} from './save.js';
 import {toggleSound,updateSound,resumeSound} from './sound.js';
 import {toggleHeader,switchVehicle} from './header.js';
 import {toggleAuger,toggleUnload,toggleDump,sellGrain} from './trailer.js';
-import {toggleHitch} from './tow.js';
-const ACT={v:switchVehicle,u:toggleAuger,j:toggleUnload,r:toggleHitch,e:toggleDump,k:sellGrain};
-export function toggleTool(){if(!active())return;if(state.vehicle!=='combine'){toast('TRAKTOR NIE MA HEDERA — V ZMIENIA POJAZD');return}if(!state.headerOn){toast('BRAK HEDERA — H ZAKŁADA');return}state.tool=!state.tool;toast(state.tool?'HEDER OPUSZCZONY — MOŻESZ KOSIĆ':'HEDER PODNIESIONY')}
+import {toggleHitch,towedBy,TOOLS} from './tow.js';
+import {growCrops} from './harvest.js';
+const ACT={v:switchVehicle,u:toggleAuger,j:toggleUnload,r:toggleHitch,e:toggleDump,k:sellGrain,g:growCrops};
+export function toggleTool(){if(!active())return;
+ if(state.vehicle==='tractor'){const t=towedBy('tractor');if(!t||!TOOLS.includes(t.kind)){toast('ZACZEP AGREGAT LUB SIEWNIK (R), BY PRACOWAĆ W POLU');return}t.working=!t.working;state.tool=t.working;toast(t.working?(t.kind==='tiller'?'AGREGAT OPUSZCZONY — ORZ ŚCIERNISKO':'SIEWNIK OPUSZCZONY — SIEJ NA ZAORANYM'):'NARZĘDZIE PODNIESIONE');return}
+ if(state.vehicle!=='combine'){toast('TRAKTOR NIE MA HEDERA — V ZMIENIA POJAZD');return}if(!state.headerOn){toast('BRAK HEDERA — H ZAKŁADA');return}state.tool=!state.tool;toast(state.tool?'HEDER OPUSZCZONY — MOŻESZ KOSIĆ':'HEDER PODNIESIONY')}
 export function toggleTime(){state.rate=state.rate===1?5:state.rate===5?20:1;toast('PRĘDKOŚĆ CZASU '+state.rate+'×')}
 // Pauza dotyczy tylko trwającej rozgrywki (nie ekranu startowego ani końcowego).
 export function setPaused(p,silent){
@@ -46,7 +49,7 @@ export function bindControls(reset,ext={}){
  addEventListener('keydown',e=>{
   let k=e.key.toLowerCase();
   if([' ','arrowup','arrowdown','arrowleft','arrowright','f1','f3'].includes(k))e.preventDefault();
-  if(e.repeat&&[' ','t','m','p','h','v','u','j','r','e','b','k','f1','f3'].includes(k))return;
+  if(e.repeat&&[' ','t','m','p','h','v','u','j','r','e','b','k','g','f1','f3'].includes(k))return;
   if(k===' '){toggleTool();return}
   if(k==='h'){toggleHeader();return}
   if(ACT[k]){ACT[k]();return}

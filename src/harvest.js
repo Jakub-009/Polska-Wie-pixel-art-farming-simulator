@@ -4,6 +4,7 @@ import {crop,fieldTile,tc} from './world.js';
 import {worldOffset} from './vehicles.js';
 import {finish} from './ui.js';
 import {puddleAt} from './map.js';
+import {allCarts,cartDef,fwd} from './tow.js';
 function harvest(dtH=1/60){
  if(state.vehicle!=='combine'||!state.tool||!state.headerOn||state.v<3)return;
  if(state.tank>=.999){if(RT.fullT<=0){toast('ZBIORNIK PEŁNY — ROZŁADUJ (U, potem J)');RT.fullT=4}return}
@@ -28,6 +29,34 @@ function harvest(dtH=1/60){
    if(state.cut/N>=FINISH_SHARE){state.done=true;state.playing=false;finish()}
  }
 }
+
+// Uprawa (0.6.0): agregat zamienia ściernisko (1) w ziemię zaoraną (2), siewnik zaorane (2) w obsiane (3).
+// Stany pola: 0 dojrzałe zboże, 1 ściernisko, 2 zaorane, 3 obsiane, 4 wschody, 5 młode zboże → (po wzroście) 0.
+const setTile=(i,j,v)=>{const k=j*FLD.n+i,was=crop[k];if(was===v)return false;crop[k]=v;if(was===0&&v)state.cut++;else if(v===0&&was)state.cut--;fieldTile(i,j);return true};
+function workSoil(){
+ if(state.vehicle!=='tractor'||Math.abs(state.v)<1)return;
+ const c=allCarts().find(q=>q.towedBy==='tractor'&&q.working);if(!c)return;
+ const d=cartDef(c),f=fwd(c.angle),rx=Math.cos(c.angle),ry=Math.sin(c.angle);
+ const from=c.kind==='tiller'?[0,1]:[2],to=c.kind==='tiller'?2:3;
+ let n=0;
+ for(let u=-d.hw+2;u<=d.hw-2;u+=3){for(const back of [d.hh-2,d.hh-8]){
+  const wx=c.x+rx*u-f[0]*back,wy=c.y+ry*u-f[1]*back;
+  const i=Math.floor((wx-FLD.x)/FLD.t),j=Math.floor((wy-FLD.y)/FLD.t);
+  if(i<0||j<0||i>=FLD.n||j>=FLD.n)continue;
+  if(from.includes(crop[j*FLD.n+i])&&setTile(i,j,to))n++;
+ }}
+ if(n){
+  RT.dustT-=1/60;
+  if(RT.dustT<=0){RT.dustT=.06;const bx=c.x-f[0]*(d.hh+4)+rx*(Math.random()-.5)*d.hw*1.6,by=c.y-f[1]*(d.hh+4)+ry*(Math.random()-.5)*d.hw*1.6;particle('dust',bx,by)}
+ }
+}
+// Test: klawisz G przeskakuje wzrost o jeden etap na całym polu (3 → 4 → 5 → dojrzałe).
+function growCrops(){
+ if(!state.playing||state.paused)return;
+ let n=0;
+ for(let j=0;j<FLD.n;j++)for(let i=0;i<FLD.n;i++){const v=crop[j*FLD.n+i];if(v>=3){setTile(i,j,v===5?0:v+1);n++}}
+ toast(n?'WZROST ZBÓŻ — O JEDEN ETAP (TEST)':'BRAK OBSIANYCH POLETEK — ORZ AGREGATEM I SIEJ SIEWNIKIEM');
+}
 function particle(type,x,y,ox=0,oy=0){if(fx.length>180)return;fx.push({type,x:x+ox,y:y+oy,vx:(Math.random()-.5)*(type==='dust'?17:31),vy:(Math.random()-.5)*20-9,life:.45+Math.random()*.35,max:.85,size:type==='dust'?3+Math.random()*5:1+Math.random()*3})}
 function updateTracks(dt){
  // Sparse, low-contrast impressions ONLY on stubble, placed by distance rather than RT.frame count.
@@ -46,4 +75,4 @@ function updateTracks(dt){
  tc.globalAlpha=1;
 }
 
-export {harvest,particle,updateTracks};
+export {harvest,particle,updateTracks,workSoil,growCrops};

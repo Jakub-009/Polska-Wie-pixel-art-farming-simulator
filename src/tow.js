@@ -13,7 +13,7 @@ const MAX_REL=1.15;
 
 export const cartDef=c=>CARTS[c.kind];
 export const isMounted=c=>c.kind==='header'&&state.headerOn;
-export function allCarts(){return [state.carts.grain,state.carts.header].filter(c=>!isMounted(c))}
+export function allCarts(){return Object.values(state.carts).filter(c=>!isMounted(c))}
 export function cartObb(c){const d=cartDef(c);return obb(c.x,c.y,d.hw,d.hh,c.angle)}
 export const tongueTip=c=>{const d=cartDef(c),f=fwd(c.angle);return[c.x+f[0]*(d.hh+d.tongue),c.y+f[1]*(d.hh+d.tongue)]};
 export function vehPose(kind){
@@ -57,22 +57,24 @@ export function hitchCandidate(){
  const k=state.vehicle,H=hitchPoint(k);
  if(!H||towedBy(k))return null;
  for(const c of standingCarts()){
+  if(k!=='tractor'&&TOOLS.includes(c.kind))continue;
   const [tx,ty]=tongueTip(c);
   if(Math.hypot(H[0]-tx,H[1]-ty)<30&&Math.abs(angDiff(state.angle,c.angle))<1.0)return c;
  }
  return null;
 }
-const NAMES={grain:'PRZYCZEPĘ',header:'WÓZEK Z HEDEREM'};
+export const TOOLS=['tiller','seeder'];
+const NAMES={grain:'PRZYCZEPĘ',header:'WÓZEK Z HEDEREM',tiller:'AGREGAT',seeder:'SIEWNIK'};
 export function toggleHitch(){
  if(!state.playing||state.paused)return;
  const k=state.vehicle,cur=towedBy(k);
  if(Math.abs(state.v)>1.5){toast('ZATRZYMAJ POJAZD');return}
- if(cur){cur.towedBy=null;cur.hx=null;if(cur.kind==='grain')state.dumping=false;toast((cur.kind==='grain'?'PRZYCZEPA':'WÓZEK')+' ODCZEPIONY');return}
+ if(cur){cur.towedBy=null;cur.hx=null;cur.working=false;if(TOOLS.includes(cur.kind))state.tool=false;if(cur.kind==='grain')state.dumping=false;toast(({grain:'PRZYCZEPA',header:'WÓZEK',tiller:'AGREGAT',seeder:'SIEWNIK'})[cur.kind]+' ODCZEPIONY');return}
  const c=hitchCandidate();
  if(!c){toast('COFNIJ DO DYSZLA WÓZKA I USTAW SIĘ W JEGO OSI');return}
  // dociągnij dyszel do zaczepu
  const H=hitchPoint(k),[tx,ty]=tongueTip(c);c.x+=H[0]-tx;c.y+=H[1]-ty;
- c.towedBy=k;c.hx=H[0];c.hy=H[1];toast(NAMES[c.kind]+' ZACZEPIONY(A)');
+ c.towedBy=k;c.hx=H[0];c.hy=H[1];toast(NAMES[c.kind]+' ZACZEPIONO');
  sfx('clunk');
 }
 export function hitchHint(dt){RT.hitchT-=dt;if(RT.hitchT<=0&&hitchCandidate()){toast('R — ZACZEP '+NAMES[hitchCandidate().kind]);RT.hitchT=6}}

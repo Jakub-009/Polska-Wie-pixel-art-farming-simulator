@@ -44,7 +44,7 @@ export function switchVehicle(){
  if(Math.abs(state.v)>1.5){toast('ZATRZYMAJ POJAZD, ABY SIĘ PRZESIĄŚĆ');return}
  const o=state.other,prev={kind:state.vehicle,x:state.x,y:state.y,angle:state.angle};
  state.vehicle=o.kind;state.x=o.x;state.y=o.y;state.angle=o.angle;state.other=prev;
- state.v=0;state.steer=0;state.tool=false;
+ state.v=0;state.steer=0;state.tool=false;for(const c of Object.values(state.carts))c.working=false;
  camera.x=state.x-VIEW.w*.5;camera.y=state.y-VIEW.h*.5;
  toast(state.vehicle==='tractor'?'TRAKTOR — SZYBSZY, BEZ HEDERA':'KOMBAJN');
 }

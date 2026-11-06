@@ -3,9 +3,9 @@ import {$,state,RT,N,FIELD_HA,TANK_T,TRAILER_T,SILO_T,PX_PER_M,SETTINGS,displayN
 import {crop} from './world.js';
 import {updateSound} from './sound.js';
 import {canAttach} from './header.js';
-import {hitchCandidate,towedBy} from './tow.js';
+import {hitchCandidate,towedBy,TOOLS} from './tow.js';
 import {spoutOverTrailer} from './trailer.js';
-const NAMES={grain:'PRZYCZEPA',header:'WÓZEK Z HEDEREM'};
+const NAMES={grain:'PRZYCZEPA',header:'WÓZEK Z HEDEREM',tiller:'AGREGAT',seeder:'SIEWNIK'};
 // Panel podpowiedzi: tylko to, co ma sens w tej chwili (maks. 4 linie).
 function contextHints(){
  const h=[],k=state.vehicle,tow=towedBy(k),c=state.carts.grain;
@@ -16,9 +16,11 @@ function contextHints(){
   if(state.augerOut){h.push(['U','złóż rurę']);h.push(spoutOverTrailer()?['J',state.unloading?'wyłącz rozładunek':'rozładunek']:['','ustaw koniec rury nad przyczepą (znacznik)'])}
  }else{
   if(tow===c)h.push(['E',c.load>.01?'wysyp (nad koszem silosu!)':'przyczepa pusta']);
+  if(tow&&TOOLS.includes(tow.kind))h.push(['SPACJA',tow.working?'podnieś '+NAMES[tow.kind].toLowerCase():'opuść '+NAMES[tow.kind].toLowerCase()+(tow.kind==='tiller'?' (orze ściernisko)':' (sieje na zaoranym)')]);
   h.push(tow?['R','odczep '+NAMES[tow.kind].toLowerCase()]:hitchCandidate()?['R','zaczep '+NAMES[hitchCandidate().kind].toLowerCase()]:['R','cofnij do dyszla, by zaczepić']);
  }
  if(state.stored>.05)h.push(['K','sprzedaj zboże z silosów']);
+ if(k==='tractor'&&tow&&TOOLS.includes(tow.kind))h.push(['G','przyspiesz wzrost (test)']);
  h.push(['V','zmień pojazd · B odblokuj · F1 pomoc']);
  return h.slice(0,4);
 }
@@ -28,7 +30,7 @@ function hud(){
  $('#rate').textContent=state.rate+'×';
  $('#speed').textContent=Math.round(Math.abs(state.v)/PX_PER_M*3.6);
  const tow=towedBy(state.vehicle);
- $('#toolstatus').textContent=state.vehicle==='tractor'?'TRAKTOR'+(tow?' + '+NAMES[tow.kind]:''):(!state.headerOn?'BEZ HEDERA':state.tool?'HEDER ↓ WŁ.':'HEDER ↑ WYŁ.')+(tow?' · WÓZEK':'');
+ $('#toolstatus').textContent=state.vehicle==='tractor'?'TRAKTOR'+(tow?' + '+NAMES[tow.kind]+(TOOLS.includes(tow.kind)?(tow.working?' ↓':' ↑'):''):''):(!state.headerOn?'BEZ HEDERA':state.tool?'HEDER ↓ WŁ.':'HEDER ↑ WYŁ.')+(tow?' · WÓZEK':'');
  $('#tanklabel').textContent=state.unloading?'ROZŁADUNEK ▼':'ZBIORNIK';
  $('#tanktext').textContent=displayNumber(state.tank*TANK_T,2)+' / '+displayNumber(TANK_T,1)+' t';
  const c=state.carts.grain;

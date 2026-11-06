@@ -1,6 +1,6 @@
 // Wspólne jednostki, stan symulacji i małe funkcje rysowania.
 // 0.4.0: stały krok czasowy, pauza jako osobny stan, tryb debug, liczniki czasu zamiast modulo klatek.
-export const VERSION='0.5.3';
+export const VERSION='0.6.0';
 export const C=document.querySelector('#game');
 export const ctx=C.getContext('2d',{alpha:false});
 export const VIEW={w:640,h:360,scale:3,zoom:0,maxZoom:0};
@@ -11,7 +11,7 @@ export function hash(x,y,z=0){let n=Math.imul(x+1289|0,374761393)^Math.imul(y+39
 export function rect(g,x,y,w,h,c){g.fillStyle=c;g.fillRect(Math.round(x),Math.round(y),Math.round(w),Math.round(h))}
 // Linia o nieparzystej grubości ląduje na środku piksela (+.5) — inaczej rozmywa się na dwa wiersze.
 export function line(g,x,y,x2,y2,c,w=1){const o=(w%2===1)?.5:0;g.strokeStyle=c;g.lineWidth=w;g.beginPath();g.moveTo(Math.round(x)+o,Math.round(y)+o);g.lineTo(Math.round(x2)+o,Math.round(y2)+o);g.stroke()}
-export const WORLD={w:1960,h:1600},FLD={x:235,y:177,n:80,t:8};FLD.w=FLD.n*FLD.t;FLD.h=FLD.w;export const N=FLD.n*FLD.n;
+export const WORLD={w:2300,h:1840},FLD={x:235,y:177,n:80,t:8};FLD.w=FLD.n*FLD.t;FLD.h=FLD.w;export const N=FLD.n*FLD.n;
 
 export function poly(g,pts,col){g.fillStyle=col;g.beginPath();pts.forEach((p,i)=>i?g.lineTo(p[0],p[1]):g.moveTo(p[0],p[1]));g.closePath();g.fill()}
 // Jeden wektor światła dla całego świata: cienie padają na południowy wschód. Długość cienia = LIGHT * wysokość obiektu (px).
@@ -25,7 +25,9 @@ export const START={x:1380,y:515,angle:-Math.PI/2};
 export const INIT_OTHER=()=>({kind:'tractor',x:1295,y:622,angle:0});
 export const INIT_CARTS=()=>({
  grain:{kind:'grain',x:1295,y:702,angle:0,load:0,towedBy:'tractor'},
- header:{kind:'header',x:0,y:0,angle:0,load:0,towedBy:null}
+ header:{kind:'header',x:0,y:0,angle:0,load:0,towedBy:null},
+ tiller:{kind:'tiller',x:1300,y:872,angle:0,load:0,towedBy:null},
+ seeder:{kind:'seeder',x:1410,y:872,angle:0,load:0,towedBy:null}
 });
 export const state={vehicle:'combine',other:INIT_OTHER(),carts:INIT_CARTS(),auger:0,augerOut:false,unloading:false,dumping:false,flow:0,stored:0,money:0,grain:0,x:START.x,y:START.y,angle:START.angle,v:0,steer:0,tool:false,headerOn:true,tank:0,time:16*60+35,
   elapsed:0,rate:1,work:0,done:false,playing:false,paused:false,mute:true,cut:0};
@@ -44,13 +46,15 @@ export const PX_PER_M=12,COMBINE_SCALE=1,MAXSPEED=20,ROAD_SPEED=34,REVERSE_SPEED
 export const VEHICLES={
  combine:{L:38,work:MAXSPEED,road:ROAD_SPEED,rev:REVERSE_SPEED,acc:9,brake:23,hitch:49,obbs:[[26,22.5,-22.5],[22,23,23]],npcBody:[26,46,.5]},
  tractor:{L:30,work:56,road:62,rev:22,acc:17,brake:34,hitch:33,obbs:[[18,31.5,.5]],npcBody:[18,31.5,.5]},
- car:{npcBody:[10,23,0]}
+ car:{npcBody:[10,23,0]},
+ bus:{npcBody:[14,46,0]}
 };
 export const VEH=VEHICLES;
 // Wózki: półszerokość/półdługość skrzyni, długość dyszla (px), położenie osi względem środka (ułamek półdługości w tył).
 // Rura wysypowa kombajnu (lokalnie: x w prawo, y do tyłu): przegub na lewej burcie, po rozłożeniu sięga 73 px w bok — poza heder (44 px).
 export const AUGER={px:-17,py:-14,len:56};
-export const CARTS={grain:{hw:13,hh:31,tongue:16,axle:.5},header:{hw:12,hh:47,tongue:18,axle:0}};
+export const CARTS={grain:{hw:13,hh:31,tongue:16,axle:.5},header:{hw:12,hh:47,tongue:18,axle:0},
+ tiller:{hw:29,hh:20,tongue:22,axle:.4},seeder:{hw:27,hh:22,tongue:22,axle:.4}};
 export const HEADER_HALF=38*COMBINE_SCALE,HEADER_MIN=49*COMBINE_SCALE,HEADER_MAX=65*COMBINE_SCALE;
 export const FIELD_HA=(FLD.w/PX_PER_M)*(FLD.h/PX_PER_M)/10000;
 export const YIELD_T_HA=5.2,TANK_T=0.8,TRAILER_T=2.0,SILO_T=3.0,GRAIN_PRICE=1150,UNLOAD_TPS=.15,DUMP_TPS=.4,FINISH_SHARE=.992;
