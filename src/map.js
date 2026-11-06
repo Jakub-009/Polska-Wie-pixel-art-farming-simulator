@@ -12,7 +12,7 @@ export const NODES={nN:[945,-35],jD:[945,386],jX:[945,962],nS:[945,1640],nW:[-35
 export const EDGES=[
  {a:'nN',b:'jD',w:53,kind:'road'},{a:'jD',b:'jX',w:53,kind:'road'},{a:'jX',b:'nS',w:53,kind:'road'},
  {a:'nW',b:'jX',w:40,kind:'road'},{a:'jX',b:'nE',w:40,kind:'road'},
- {a:'jD',b:'dE',w:30,kind:'drive'}
+ {a:'jD',b:'dE',w:44,kind:'drive'}
 ];
 export const ROADS={nodes:NODES,edges:EDGES,
  degree:Object.fromEntries(Object.keys(NODES).map(k=>[k,EDGES.filter(e=>e.a===k||e.b===k).length])),
@@ -50,10 +50,10 @@ export const PROPS={
  pallets:{x:1350,y:478,n:6},barrels:{x:1089,y:690,n:3},
  pond:{x:1518,y:778,w:55,h:27},trough:{x:1109,y:792,w:31,h:15},
  poles:[{x:986,y:188,nest:true},{x:981,y:770,nest:false}],
- sign:{x:1004,y:333},laundry:{x:1446,y:735},garden:{x:1480,y:165,w:135,h:242}
+ sign:{x:1004,y:272},laundry:{x:1446,y:735},garden:{x:1480,y:165,w:135,h:242}
 };
 export const FENCES=[ // płot przy drodze (z bramą na podjeździe)
- {x:1004,y0:193,y1:355},{x:1004,y0:416,y1:903}
+ {x:1004,y0:193,y1:318},{x:1004,y0:454,y1:903}
 ];
 
 // ── Kolizje ──

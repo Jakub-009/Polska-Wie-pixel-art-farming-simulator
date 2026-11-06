@@ -91,7 +91,7 @@ function birds(g,t){
 // hh/hw: półwymiary obrysu (px), cy: przesunięcie środka obrysu wzdłuż osi pojazdu (+ = do tyłu), lane: odsunięcie od osi jezdni.
 const SPECS={
  car:{speed:34,hw:12,hh:24,cy:-1,lane:14,allow:['road']},
- tractor:{speed:22,hw:16,hh:27,cy:3,lane:18,allow:['road','drive']},
+ tractor:{speed:22,hw:16,hh:27,cy:3,lane:18,allow:['road']},
  combine:{speed:14,hw:36,hh:46,cy:-7,lane:6,allow:['road']}
 };
 const TURN_RATE=2.4; // rad/s
@@ -100,7 +100,7 @@ const inWorld=p=>p[0]>-10&&p[0]<WORLD.w+10&&p[1]>-10&&p[1]<WORLD.h+10;
 
 class Walker{
  constructor(kind,from,to,s,opts={}){
-  Object.assign(this,{kind,spec:SPECS[kind],from,to,s,v:0,travel:0,turns:0,dwell:0,steer:0,color:opts.color||'#8c9b95',seed:opts.seed||1,blocked:false,pos:[0,0],obbShape:null});
+  Object.assign(this,{kind,spec:SPECS[kind],from,to,s,v:0,travel:0,turns:0,dwell:0,steer:0,color:opts.color||'#8c9b95',seed:opts.seed||1,blocked:false,blockT:0,ghost:false,ghostT:0,pos:[0,0],obbShape:null});
   this.setEdge(from,to);this.heading=this.dirHeading;this.place();
  }
  setEdge(from,to){
@@ -126,11 +126,17 @@ class Walker{
   if(this.dwell>0){this.dwell-=dt;this.v=0}
   else{
    const pr=this.probe();let blocked=false;
-   for(const o of playerObbs())if(collide(pr,o)){blocked=true;break}
+   const mine=playerObbs();
+   if(!this.ghost)for(const o of mine)if(collide(pr,o)){blocked=true;break}
    // inne pojazdy blokują tylko jadąc w tę samą stronę (mijanie się na wąskiej drodze nie powoduje zakleszczenia)
    if(!blocked)for(const w of others)if(w!==this&&Math.cos(w.heading-this.heading)>.5&&collide(pr,w.obbShape)){blocked=true;break}
    if(!blocked)for(const p of people)if(collide(pr,p.shape)){blocked=true;break}
    this.blocked=blocked;
+   // Anty-zakleszczenie: jeśli gracz blokuje pojazd >5 s, ten staje się „duchem” (przejeżdża przez kombajn), aż się rozdzielą.
+   this.blockT=blocked?this.blockT+dt:0;
+   if(!this.ghost&&this.blockT>5){this.ghost=true;this.ghostT=0}
+   if(this.ghost){this.ghostT+=dt;let touch=false;for(const o of mine)if(collide(this.obbShape,o)||collide(pr,o)){touch=true;break}
+    if(!touch&&this.ghostT>2)this.ghost=false}
    const target=blocked?0:this.spec.speed;
    this.v+=clamp(target-this.v,-70*dt,22*dt);
   }
@@ -201,7 +207,7 @@ function updateLife(dt){
 // Dynamiczne przeszkody dla kolizji gracza.
 function dynamicColliders(){
  const out=[];
- for(const w of walkers)out.push({...w.obbShape,id:w.kind});
+ for(const w of walkers)if(!w.ghost)out.push({...w.obbShape,id:w.kind});
  for(const p of people)out.push({...p.shape,id:'person'});
  return out;
 }
