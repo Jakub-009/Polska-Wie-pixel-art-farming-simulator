@@ -103,6 +103,15 @@ Potem otwórz `http://localhost:8000/`. Alternatywnie użyj rozszerzenia Live Se
 
 0.4.3: przebudowa gospodarstwa (obwodnica, plac manewrowy, test przejezdności). Zbiornik (3 t) nie zapełnia się przy polu 0,28 ha — do rozwiązania razem z rozładunkiem (0.5).
 
+## 0.6.0
+- Mapa powiększona do 2300×1840 (wschodni pas z polami i drogą polną, południowy pas z drogą główną).
+- Nowy układ dróg: główna dwupasmowa asfaltowa na dole (przerywana linia, linie krawędziowe), pionowa boczna asfaltowa z chodnikiem, latarniami, przejściem dla pieszych i pętlą z przystankiem PKS; drogi polne z kolejami, znaki STOP na dojazdach, utwardzony wjazd na podwórze.
+- Ruch: główna — samochody, radiowóz POLICJA i autobus PKS; boczna — pojedyncze auta i piesi na chodniku; polne — traktory i kombajn.
+- Agregat uprawowy i siewnik (zaczep R, SPACJA opuszcza/podnosi). Stany pola: 0 zboże, 1 ściernisko, 2 zaorane, 3 obsiane, 4 wschody, 5 młode zboże. Klawisz G przyspiesza wzrost (test).
+- Chlewik z wybiegiem i trzema świniami przy północno-wschodnim narożniku gospodarstwa; betonowy plac przy silosach; więcej kałuż.
+- Nowe słupy energetyczne, gniazdo i bocian, latarnie, krzaki przeniesione na górną krawędź pola.
+- Zapisy z 0.5.x są wczytywane (agregat i siewnik dodawane automatycznie).
+
 ## 0.5.3
 - Ostrość: linie 1 px (płoty, szlaki, rzędy) wyrównane do piksela, utwardzone krawędzie obiektów na warstwie dolnej (gospodarstwo, pastwisko, płoty).
 
