@@ -1,6 +1,6 @@
 # Polska Wieś — Żniwa
 
-Przeglądarkowa gra pixel-art o pracy kombajnem na polskiej wsi. **Wersja 0.3.2** to techniczny podział dotychczasowej gry 0.3.1 na moduły JavaScript. Koszenie, sterowanie i grafika pozostały bez zamierzonych zmian.
+Przeglądarkowa gra pixel-art o pracy kombajnem na polskiej wsi. **Wersja 0.4.0** to techniczny podział dotychczasowej gry 0.3.1 na moduły JavaScript. Koszenie, sterowanie i grafika pozostały bez zamierzonych zmian.
 
 ## Uruchamianie
 
@@ -38,23 +38,29 @@ Potem otwórz `http://localhost:8000/`. Alternatywnie użyj rozszerzenia Live Se
 |---|---|
 | `index.html` | Canvas, elementy interfejsu, punkty zaczepienia JS |
 | `style.css` | Wygląd interfejsu oraz układ mobilny |
-| `src/core.js` | Wspólne dane, jednostki, stan i funkcje pomocnicze |
-| `src/world.js` | Statyczny teren, gospodarstwo, pola, dekoracje |
-| `src/vehicles.js` | Sprite kombajnu i rysowanie pojazdu |
+| `src/core.js` | Wspólne dane, jednostki, stan, liczniki czasu |
+| `src/map.js` | **Mapa jako dane**: graf dróg, pola, lasy, budynki, drzewa, krzewy, kolizje |
+| `src/geometry.js` | Kolizje OBB / koła z wektorem wypchnięcia |
+| `src/world.js` | Malowanie warstw z danych mapy (`buildWorld()`) |
+| `src/vehicles.js` | Sprite kombajnu, renderer maszyn, obrys kolizji gracza |
 | `src/harvest.js` | Ścinanie pszenicy, ślady i cząsteczki |
-| `src/life.js` | Animowane życie wsi i pojazdy NPC |
-| `src/render.js` | Kompozycja klatek i kolejność rysowania |
+| `src/life.js` | Pojazdy NPC na grafie dróg, piesi, zwierzęta |
+| `src/render.js` | Kompozycja klatek, warstwy, nakładka debug |
 | `src/sound.js` | Dźwięki WebAudio |
 | `src/ui.js` | HUD i ekran zakończenia |
-| `src/controls.js` | Klawiatura i dotyk |
-| `src/main.js` | Pętla gry, aktualizacja ruchu, restart i diagnostyka |
+| `src/controls.js` | Klawiatura, dotyk, pauza |
+| `src/main.js` | Stały krok symulacji, kolizje, kamera, restart, diagnostyka |
 
-## Stan projektu i znane problemy
+## Zmiany w 0.4.0
 
-0.3.2 **nie** naprawia jeszcze zauważonych błędów mapy. To celowe: najpierw migracja działającej wersji, później poprawki na uporządkowanym kodzie.
+- **Mapa jako dane (`map.js`).** Rysowanie, kolizje i trasy NPC korzystają z tych samych list. Roślinność jest rozmieszczana z regułami: nic nie rośnie na drodze, w budynku ani w polu.
+- **Graf dróg.** Drogi malowane z jednego grafu (skrzyżowania bez łat), pojazdy NPC jeżdżą po nim prawą stroną i skręcają na skrzyżowaniach.
+- **Kolizje.** Kombajn to trzy obrócone prostokąty (kabina, tył, heder). Zderza się z budynkami, drzewami, płotami, słupami, stawem i pojazdami, i **ześlizguje się** po przeszkodach. NPC hamują przed kombajnem, piesi go przepuszczają.
+- **Warstwy.** Dachy i korony drzew rysowane są nad pojazdami; cienie pod nimi.
+- **Podwórze** jest ortogonalne; brama w płocie leży na podjeździe.
+- **Poprawki z 0.3.3:** brakujący import `MAXSPEED` (dźwięk zawieszał grę), pauza tylko w trakcie gry + auto-pauza przy utracie fokusu, kamera ograniczona do mapy, skalowanie całkowite (ostre piksele), stały krok czasowy 60 Hz, liczniki zamiast `RT.frame%n`, rysowanie tylko widocznego wycinka warstw.
+- **F3** — nakładka debug: collidery, graf dróg, FPS.
 
-Do naprawienia w następnej wersji: kolizje NPC z kombajnem i innymi autami, nawierzchnie i skrzyżowania, spójny dojazd do gospodarstwa, granice i obiekty świata, geometria pastwiska, rozmieszczenie dekoracji i ścieżki pieszych.
+## Znane problemy / dalej
 
-## Zasada dalszych zmian
-
-Najpierw odtwarzalny test, potem pojedyncza poprawka i commit Git. Unikamy mieszania przebudowy architektury z przebudową mapy w jednej zmianie.
+0.4.1: skala drzew i zwierząt, jednolity rzut i wektor światła, pszenica. Zbiornik (3 t) nie zapełnia się przy polu 0,28 ha — do rozwiązania razem z rozładunkiem (0.5).
