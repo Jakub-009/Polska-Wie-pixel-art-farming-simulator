@@ -44,12 +44,20 @@ Potem otwórz `http://localhost:8000/`. Alternatywnie użyj rozszerzenia Live Se
 | `src/world.js` | Malowanie warstw z danych mapy (`buildWorld()`) |
 | `src/vehicles.js` | Sprite kombajnu, renderer maszyn, obrys kolizji gracza |
 | `src/harvest.js` | Ścinanie pszenicy, ślady i cząsteczki |
+| `src/header.js` | Zdejmowanie i zakładanie hedera (klawisz H) |
 | `src/life.js` | Pojazdy NPC na grafie dróg, piesi, zwierzęta |
 | `src/render.js` | Kompozycja klatek, warstwy, nakładka debug |
 | `src/sound.js` | Dźwięki WebAudio |
 | `src/ui.js` | HUD i ekran zakończenia |
 | `src/controls.js` | Klawiatura, dotyk, pauza |
 | `src/main.js` | Stały krok symulacji, kolizje, kamera, restart, diagnostyka |
+
+## Zmiany w 0.4.3
+- Gospodarstwo przebudowane według szkicu: brązowy płot, wjazd od zachodu (między ogrodem a wiatą), brama północna z drogą na „drugie pole” (wkrótce), podwórze z błotem, kałużami i kurami, ogródek z domem, psem i budą, stajnia, stodoła, wiata.
+- Kombajn (także z hederem) przejeżdża wszędzie po podwórzu — sprawdzone testem przejezdności.
+- Nowy start: podwórze gospodarstwa. Rura rozładunkowa schowana.
+- H: zdejmij/załóż heder (stań, podnieś heder SPACJĄ; zakładanie: podjedź przodem równolegle do odstawionego hedera). Bez hedera nie kosi.
+- Krowy korzystają z całego pastwiska, lisy biegają przy lesie, kury i pies na gospodarstwie.
 
 ## Zmiany w 0.4.2
 

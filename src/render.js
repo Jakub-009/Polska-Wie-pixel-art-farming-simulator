@@ -2,7 +2,7 @@
 // 0.4.0: rysowanie tylko widocznego wycinka warstw, dachy i korony nad pojazdami, nakładka debug (F3).
 import {ctx,VIEW,clamp,rect,line,state,camera,fx,FLD,DEBUG,RT} from './core.js';
 import {ground,field,tracks,decorLow,decorHigh} from './world.js';
-import {drawHarvester,playerObbs} from './vehicles.js';
+import {drawHarvester,drawParkedHeader,playerObbs} from './vehicles.js';
 import {drawLivingWorld,drawVillageLife,drawCanopyLife,dynamicColliders} from './life.js';
 import {MAP} from './map.js';
 import {obbCorners} from './geometry.js';
@@ -33,6 +33,7 @@ function drawWorld(){
  line(ctx,FLD.x,FLD.y,FLD.x,FLD.y+FLD.h,'#a8996a');
  line(ctx,FLD.x+FLD.w,FLD.y,FLD.x+FLD.w,FLD.y+FLD.h,'#a8996a');
  blit(tracks);blit(decorLow);
+ if(state.parked)drawParkedHeader(ctx,state.parked.x,state.parked.y,state.parked.angle);
  drawLivingWorld();drawVillageLife();drawParticles();drawHarvester();
  blit(decorHigh);drawCanopyLife();
  if(DEBUG.on)drawDebug();

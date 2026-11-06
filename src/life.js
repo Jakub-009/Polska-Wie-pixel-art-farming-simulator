@@ -3,7 +3,7 @@
 import {ctx,rect,line,hash,FLD,camera,VIEW,state,RT,clamp,WORLD,LIGHT} from './core.js';
 import {crop} from './world.js';
 import {drawMachineAt,playerObbs,orientedShadow,drawRotated} from './vehicles.js';
-import {MAP,ROADS} from './map.js';
+import {MAP,ROADS,pointBlocked} from './map.js';
 import {obb,circle,collide} from './geometry.js';
 
 // ───────── rysowanie dekoracji reagujących na wiatr ─────────
@@ -206,18 +206,22 @@ class Person{
 class Cow{
  constructor(i){
   const pa=MAP.pasture;this.i=i;this.coat=i%COATS.length;
-  this.x=pa.x0+30+hash(i,1)*(pa.x1-pa.x0-60);this.y=pa.y0+40+hash(i,2)*(pa.y1-pa.y0-80);
+  // każda krowa ma „swój rejon” rozłożony wzdłuż całego pastwiska (pasie się i wędruje głównie tam)
+  this.homeY=pa.y0+40+(i+.5)/9*(pa.y1-pa.y0-80);this.homeX=pa.x0+30+hash(i,1)*(pa.x1-pa.x0-60);
+  this.x=this.homeX;this.y=this.homeY+(hash(i,2)-.5)*60;
   this.heading=hash(i,3)*6.28;this.v=0;this.state='graze';this.t=2+hash(i,4)*8;this.tx=this.x;this.ty=this.y;this.rng=i*977;this.phase=hash(i,5)*6;
  }
  rand(){this.rng=(Math.imul(this.rng,1664525)+1013904223)|0;return((this.rng>>>0)%100000)/100000}
  pick(herd){
-  const pa=MAP.pasture;
-  if(this.rand()<.5){this.state='graze';this.t=4+this.rand()*10;return}
-  // cel: blisko losowej innej krowy (stado) lub losowy punkt łąki
-  const o=this.rand()<.5?herd[Math.floor(this.rand()*herd.length)]:null;
-  const bx=o?o.x:this.x,by=o?o.y:this.y,r=o?45:110;
-  this.tx=clamp(bx+(this.rand()*2-1)*r,pa.x0+22,pa.x1-22);this.ty=clamp(by+(this.rand()*2-1)*r,pa.y0+24,pa.y1-24);
-  this.state='walk';this.t=30;
+  const pa=MAP.pasture,r=this.rand();
+  if(r<.4){this.state='graze';this.t=4+this.rand()*10;return}
+  // cel: najczęściej w okolicy własnego rejonu, czasem gdziekolwiek na łące, rzadko przy innej krowie
+  let bx,by,sx,sy;
+  if(r<.8){bx=this.homeX;by=this.homeY;sx=70;sy=110}
+  else if(r<.93){bx=(pa.x0+pa.x1)/2;by=pa.y0+(pa.y1-pa.y0)*this.rand();sx=60;sy=40}
+  else{const o=herd[Math.floor(this.rand()*herd.length)];bx=o.x;by=o.y;sx=40;sy=40}
+  this.tx=clamp(bx+(this.rand()*2-1)*sx,pa.x0+22,pa.x1-22);this.ty=clamp(by+(this.rand()*2-1)*sy,pa.y0+24,pa.y1-24);
+  this.state='walk';this.t=40;
  }
  update(dt,herd){
   this.phase+=dt;this.t-=dt;
@@ -269,6 +273,76 @@ class DeerGroup{
  }
  draw(){for(const m of this.members)drawDeer(ctx,m.x,m.y,m.heading,m.phase,this.running)}
 }
+// ───────── małe zwierzęta: kury, pies, lisy (błądzą w swoim rejonie, uciekają przed maszyną) ─────────
+function drawChicken(g,x,y,heading,peck){
+ if(!nearCam(x,y,20))return;
+ blob(g,x,y,4,2,2);
+ drawRotated(g,x,y,heading,s=>{rect(s,-3,-2,6,4,'#efe6d2');rect(s,-4,-1,2,2,'#7a5a3a');rect(s,3+peck,-1,2,2,'#efe6d2');rect(s,5+peck,0,1,1,'#d7a43a');rect(s,3+peck,-2,1,1,'#c8402b')});
+}
+function drawDog(g,x,y,heading,phase){
+ if(!nearCam(x,y,24))return;
+ blob(g,x,y,7,3,3);
+ drawRotated(g,x,y,heading,s=>{rect(s,-5,-2,10,4,'#7a5a3a');rect(s,-4,-2,5,3,'#3a2e26');rect(s,5,-2,4,4,'#8a6a46');rect(s,8,-1,2,2,'#2f2a26');rect(s,5,-3,2,1,'#3a2e26');rect(s,5,2,2,1,'#3a2e26');rect(s,-8,-1+Math.round(Math.sin(phase*6)),4,1,'#7a5a3a')});
+}
+function drawFox(g,x,y,heading,phase,running){
+ if(!nearCam(x,y,30))return;
+ blob(g,x,y,8,3,3);
+ drawRotated(g,x,y,heading,s=>{
+  rect(s,-5,-2,9,4,'#c8662f');rect(s,-4,-1,6,2,'#d97a3a');
+  rect(s,4,-2,5,4,'#d97a3a');rect(s,8,-1,3,2,'#f0e0c8');rect(s,5,-3,2,1,'#3a2a22');rect(s,5,2,2,1,'#3a2a22');
+  const sw=Math.round(Math.sin(phase*(running?2:.7)));
+  rect(s,-12,-1+sw,7,3,'#c8662f');rect(s,-13,-1+sw,2,3,'#f2ede0');   // kita z białą końcówką
+ });
+}
+class Critter{
+ constructor(o){
+  Object.assign(this,{heading:hash(o.seed,1)*6.28,v:0,state:'idle',t:1+hash(o.seed,2)*4,rng:(o.seed*7919)|0,phase:0,tx:o.x,ty:o.y,idleMin:2,idleVar:5,speed:12,runSpeed:40,flee:0},o);
+ }
+ rand(){this.rng=(Math.imul(this.rng,1664525)+1013904223)|0;return((this.rng>>>0)%100000)/100000}
+ ok(x,y){const R=this.region;return x>R.x0&&x<R.x1&&y>R.y0&&y<R.y1&&!pointBlocked(x,y,5)&&!(this.avoid&&this.avoid(x,y))}
+ pick(){
+  for(let k=0;k<10;k++){
+   let x,y;
+   if(this.near&&this.rand()<.5){x=this.near.x+(this.rand()*2-1)*this.near.r;y=this.near.y+(this.rand()*2-1)*this.near.r}
+   else{x=this.region.x0+this.rand()*(this.region.x1-this.region.x0);y=this.region.y0+this.rand()*(this.region.y1-this.region.y0)}
+   if(this.ok(x,y)){this.tx=x;this.ty=y;this.state='walk';return}
+  }
+  this.t=2;
+ }
+ update(dt){
+  this.phase+=dt;
+  const pd=Math.hypot(state.x-this.x,state.y-this.y);
+  if(this.flee&&pd<this.flee&&this.state!=='run'){
+   const away=Math.atan2(this.y-state.y,this.x-state.x);
+   for(const off of [0,.6,-.6,1.2,-1.2,2]){
+    const d=70+this.rand()*70,x=this.x+Math.cos(away+off)*d,y=this.y+Math.sin(away+off)*d;
+    if(this.ok(x,y)){this.tx=x;this.ty=y;this.state='run';break}
+   }
+  }
+  if(this.state==='idle'){this.v+=clamp(-this.v,-40*dt,40*dt);this.t-=dt;if(this.t<=0)this.pick();return}
+  const dx=this.tx-this.x,dy=this.ty-this.y,d=Math.hypot(dx,dy),sp=this.state==='run'?this.runSpeed:this.speed;
+  if(d<5){this.state='idle';this.t=this.idleMin+this.rand()*this.idleVar;return}
+  this.heading+=clamp(angDiff(this.heading,Math.atan2(dy,dx)),-(this.state==='run'?7:3.5)*dt,(this.state==='run'?7:3.5)*dt);
+  this.v+=clamp(sp-this.v,-60*dt,60*dt);
+  const nx=this.x+Math.cos(this.heading)*this.v*dt,ny=this.y+Math.sin(this.heading)*this.v*dt;
+  if(!this.ok(nx,ny)){this.state='idle';this.t=1+this.rand()*2;this.v=0;return}
+  this.x=nx;this.y=ny;
+ }
+ draw(){
+  if(this.kind==='chicken')drawChicken(ctx,this.x,this.y,this.heading,this.state==='idle'&&Math.sin(this.phase*7)>.3?1:0);
+  else if(this.kind==='dog')drawDog(ctx,this.x,this.y,this.heading,this.phase);
+  else drawFox(ctx,this.x,this.y,this.heading,this.phase,this.state==='run');
+ }
+}
+const K=MAP.props.kennel;
+const yardRegion={x0:1285,y0:590,x1:1700,y1:785};
+const critters=[
+ ...Array.from({length:7},(_,i)=>new Critter({kind:'chicken',seed:100+i,x:1400+i*30,y:640+(i%3)*30,region:yardRegion,speed:11,runSpeed:42,flee:55,idleMin:1,idleVar:3})),
+ new Critter({kind:'dog',seed:200,x:K.x-10,y:K.y+30,region:{x0:1062,y0:160,x1:1545,y1:450},near:{x:K.x+10,y:K.y+20,r:70},speed:22,runSpeed:44,idleMin:3,idleVar:8,
+  avoid:(x,y)=>{const B=MAP.beds;return x>B.x-12&&x<B.x+B.w+12&&y>B.y-12&&y<B.y+B.h+12}}),
+ new Critter({kind:'fox',seed:300,x:260,y:1200,region:{x0:205,y0:1065,x1:440,y1:1500},speed:34,runSpeed:78,flee:150,idleMin:3,idleVar:9}),
+ new Critter({kind:'fox',seed:301,x:380,y:70,region:{x0:270,y0:14,x1:540,y1:128},speed:34,runSpeed:78,flee:150,idleMin:3,idleVar:9})
+];
 const herd=Array.from({length:9},(_,i)=>new Cow(i));
 const deerGroups=[
  new DeerGroup([[268,78],[520,64],[780,92]],2,11),          // żyto na północ od pola
@@ -283,14 +357,16 @@ const walkers=[
  new Walker('combine','nW','jX',120,{seed:11})
 ];
 const people=[
- new Person([[1124,428],[1359,438]],15,'#526c65',1,5,0),
- new Person([[1180,806],[1400,806]],13,'#a57660',1.1,6,0)
+ new Person([[1165,436],[1170,480],[1240,556],[1360,600]],15,'#526c65',1,5,0),   // od drzwi domu przez furtkę na podwórze
+ new Person([[1300,780],[1450,700],[1650,640]],13,'#a57660',1.1,6,0),             // po podwórku
+ new Person([[1272,300],[1500,300]],11,'#7a8f5a',1,7,0)                          // przy grządkach
 ];
 
 // Wywoływane z kroku symulacji.
 function updateLife(dt){
  for(const c of herd)c.update(dt,herd);
  for(const d of deerGroups)d.update(dt);
+ for(const c of critters)c.update(dt);
  for(const w of walkers)w.update(dt,walkers,people);
  for(const p of people)p.update(dt);
 }
@@ -301,12 +377,13 @@ function dynamicColliders(){
  for(const p of people)out.push({...p.shape,id:'person'});
  return out;
 }
-function lifeInfo(){return{time:RT.lifeT,vehicles:walkers.map(w=>({kind:w.kind,x:w.pos[0],y:w.pos[1],v:w.v,blocked:w.blocked,edge:w.from+'>'+w.to})),people:people.map(p=>({x:p.x,y:p.y})),animals:herd.length+deerGroups.reduce((n,g)=>n+g.members.length,0),cows:herd.map(c=>({x:Math.round(c.x),y:Math.round(c.y),s:c.state})),deer:deerGroups.map(g=>g.members.map(m=>[Math.round(m.x),Math.round(m.y)]))}}
+function lifeInfo(){return{time:RT.lifeT,vehicles:walkers.map(w=>({kind:w.kind,x:w.pos[0],y:w.pos[1],v:w.v,blocked:w.blocked,edge:w.from+'>'+w.to})),people:people.map(p=>({x:p.x,y:p.y})),critters:critters.map(c=>[c.kind,Math.round(c.x),Math.round(c.y),c.state]),animals:herd.length+critters.length+deerGroups.reduce((n,g)=>n+g.members.length,0),cows:herd.map(c=>({x:Math.round(c.x),y:Math.round(c.y),s:c.state})),deer:deerGroups.map(g=>g.members.map(m=>[Math.round(m.x),Math.round(m.y)]))}}
 
 function drawVillageLife(){
  const t=RT.lifeT;
  for(const c of herd)c.draw();
  for(const d of deerGroups)d.draw();
+ for(const c of critters)c.draw();
  for(const p of people)p.draw();
  for(const w of walkers)w.draw();
  birds(ctx,t);

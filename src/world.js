@@ -75,13 +75,30 @@ function paintRoads(){
   if(roadClearance(x,y)<-4)rect(g,x,y,1+(i%3),1,i%3===0?'#d6c093':'#917f61');
  }
 }
-function paintYard(){
- const o=MAP.yard.outer,gr=MAP.yard.gravel;
- rect(g,o.x,o.y,o.w,o.h,'#9ba477');rect(g,gr.x,gr.y,gr.w,gr.h,'#c7b78c');
- for(let i=0;i<500;i++){let x=gr.x+(hash(i,25)*(gr.w-14)|0),y=gr.y+(hash(i,6)*(gr.h-4)|0);rect(g,x,y,2,hash(i,9)>.5?2:1,hash(i,11)>.5?'#b7aa87':'#d4c6a0')}
- for(let i=0;i<9;i++)line(g,1050+i*30,608,1050+i*30,780,'#b1a27b',1);
- const gd=MAP.props.garden;
- rect(g,gd.x,gd.y,gd.w,gd.h,'#92a36e');for(let x=gd.x+9;x<gd.x+gd.w-10;x+=16){rect(g,x,183,8,212,'#6a855e');for(let y=189;y<395;y+=17)rect(g,x+1,y,5,5,'#4f7450')}
+function paintFarm(){
+ const F=MAP.farm,G=MAP.garden,B=MAP.beds;
+ // główne podwórko: ubita ziemia z kamykami
+ rect(g,F.x,F.y,F.w,F.h,'#c3b48a');
+ for(let i=0;i<5200;i++){const x=F.x+(hash(i,25)*(F.w-4)|0),y=F.y+(hash(i,6)*(F.h-4)|0);rect(g,x,y,2,hash(i,9)>.5?2:1,['#b7aa87','#d4c6a0','#ad9f7b','#cdbf97'][i%4])}
+ // koleiny i wydeptane szlaki przez podwórko
+ for(const [x1,y1,x2,y2] of [[1000,470,1700,470],[1000,530,1700,530],[1240,470,1240,800],[1700,150,1700,800],[1760,150,1760,800]])line(g,x1,y1,x2,y2,'#b5a681',1);
+ // błotko (większe, brunatne plamy) i małe kałuże
+ for(const [x,y,rx,ry,wet] of [[1450,650,34,18,1],[1335,725,26,13,0],[1625,610,30,15,1],[1710,720,28,14,0],[1300,520,22,10,1],[1560,560,20,10,0],[1520,745,24,12,1]]){
+  g.fillStyle='#b3a57f';g.beginPath();g.ellipse(x,y,rx+6,ry+4,0,0,Math.PI*2);g.fill();
+  g.fillStyle='#9a8b67';g.beginPath();g.ellipse(x,y,rx,ry,0,0,Math.PI*2);g.fill();
+  for(let i=0;i<14;i++){rect(g,x+(hash(i,x)-.5)*rx*1.6,y+(hash(i,y)-.5)*ry*1.6,2,1,'#867755')}
+  if(wet){g.fillStyle='#7ea3a0';g.beginPath();g.ellipse(x+3,y,rx*.42,ry*.42,0,0,Math.PI*2);g.fill();g.fillStyle='#bcd2c4';g.beginPath();g.ellipse(x,y-ry*.12,rx*.15,ry*.1,0,0,Math.PI*2);g.fill()}
+ }
+ // ogródek: trawnik, grządki, ścieżki
+ rect(g,G.x,G.y,G.w,G.h,'#8fa56b');
+ for(let i=0;i<1500;i++){const x=G.x+(hash(i,41)*(G.w-3)|0),y=G.y+(hash(i,42)*(G.h-3)|0);rect(g,x,y,1+(i%2),1,['#a3b87c','#7e9a5f','#b2bf84'][i%3])}
+ rect(g,B.x-4,B.y-4,B.w+8,B.h+8,'#7a8f5a');
+ for(let x=B.x+4;x<B.x+B.w-10;x+=18){rect(g,x,B.y,10,B.h,'#6a855e');for(let y=B.y+6;y<B.y+B.h-8;y+=14)rect(g,x+2,y,6,6,'#4f7450')}
+ g.lineCap='round';
+ for(const pts of [[[1176,432],[1170,462],[1170,486]],[[1176,432],[1540,432],[1540,346],[1562,346]],[[1400,432],[1400,358]],[[1176,432],[1100,432],[1100,300]]]){
+  g.strokeStyle='#d6caa8';g.lineWidth=9;g.beginPath();g.moveTo(pts[0][0],pts[0][1]);for(const p of pts.slice(1))g.lineTo(p[0],p[1]);g.stroke();
+ }
+ g.lineCap='butt';
 }
 
 // ───────── pole pszenicy ─────────
@@ -131,17 +148,29 @@ function roof(gl,gh,x,y,w,h,color){
  rect(gh,x+6,y+6,5,5,'#e5b887');
 }
 function house(b){
- const {x,y}=b;roof(dl,dh,x,y,b.w,b.h,b.color);
- rect(dh,x+99,y+15,14,13,'#a8a08a');rect(dh,x+101,y+17,10,9,'#cbbea3');rect(dh,x+104,y+18,4,4,'#444945');
- rect(dh,x+7,y+46,22,7,'#d9b07c');rect(dh,x+9,y+48,18,3,'#b9a98f');
- rect(dh,x+56,y+12,17,13,'#78584d');rect(dh,x+58,y+14,13,9,'#6d8e99');rect(dh,x+60,y+15,9,2,'#a1bbc0');
+ const {x,y,w:W}=b;roof(dl,dh,x,y,W,b.h,b.color);
+ rect(dh,x+W-41,y+15,14,13,'#a8a08a');rect(dh,x+W-39,y+17,10,9,'#cbbea3');rect(dh,x+W-36,y+18,4,4,'#444945');
+ rect(dh,x+8,y+46,22,7,'#d9b07c');rect(dh,x+10,y+48,18,3,'#b9a98f');
+ rect(dh,x+Math.round(W/2)-9,y+12,17,13,'#78584d');rect(dh,x+Math.round(W/2)-7,y+14,13,9,'#6d8e99');rect(dh,x+Math.round(W/2)-5,y+15,9,2,'#a1bbc0');
 }
+// Duże dachy: świetliki i zacieki wzdłuż połaci, żeby powierzchnia nie była płaska.
 function barn(b){
- const {x,y}=b;roof(dl,dh,x,y,b.w,b.h,b.color);
- rect(dh,x+20,y+23,45,26,'#725043');rect(dh,x+22,y+25,41,22,'#9d654f');
- for(let i=0;i<5;i++)line(dh,x+25+i*8,y+27,x+25+i*8,y+45,'#6b4539',1);
- rect(dh,x+133,y+20,40,17,'#684a3f');rect(dh,x+135,y+22,36,13,'#a77a55');
- for(let i=0;i<5;i++)rect(dh,x+90+i*4,y+32,2,9,'#d29a6e');
+ const {x,y,w:W,h:H}=b;roof(dl,dh,x,y,W,H,b.color);
+ const vertical=H>=W;
+ for(let k=0;k<(vertical?H:W)-60;k+=70){
+  const px=vertical?x+10:x+30+k,py=vertical?y+30+k:y+10;
+  rect(dh,px,py,24,16,'#725043');rect(dh,px+2,py+2,20,12,'#9d654f');for(let i=0;i<4;i++)line(dh,px+5+i*5,py+3,px+5+i*5,py+12,'#6b4539',1);
+ }
+ for(let k=0;k<(vertical?H:W)-80;k+=110){
+  const px=vertical?x+W-34:x+60+k,py=vertical?y+60+k:y+H-30;
+  rect(dh,px,py,24,11,'#684a3f');rect(dh,px+2,py+2,20,7,'#a77a55');
+ }
+}
+// Wiata: otwarta od strony podwórza — słupy i cień pod okapem.
+function wiata(b){
+ roof(dl,dh,b.x,b.y,b.w,b.h,b.color);
+ for(let yy=b.y+14;yy<b.y+b.h-10;yy+=46){rect(dh,b.x+b.w-6,yy,6,8,'#5e4a39');rect(dh,b.x+b.w-5,yy,3,5,'#a98a63')}
+ for(let k=0;k<b.h-80;k+=95){rect(dh,b.x+12,b.y+28+k,28,14,'#725043');rect(dh,b.x+14,b.y+30+k,24,10,'#9d654f')}
 }
 function crownPatch(gx,cx,cy,rad,base,lit,seed){
  const rr=Math.round(rad);
@@ -198,28 +227,36 @@ function pastureFence(x0,y0,x1,y1){
 }
 function pole(x,y,nest){poly(dl,[[x,y],[x+5,y],[x+LIGHT.x*55+5,y+LIGHT.y*55],[x+LIGHT.x*55-3,y+LIGHT.y*55]],'#57674b66');rect(dl,x-3,y-28,6,42,'#75664e');rect(dl,x-5,y-26,2,39,'#b19b73');rect(dl,x-11,y-19,22,3,'#665b48');rect(dl,x-8,y-20,3,3,'#c8be9b');rect(dl,x+6,y-20,3,3,'#c8be9b');if(nest){rect(dl,x-12,y-31,24,6,'#69553d');rect(dl,x-9,y-35,20,7,'#8d6e47');rect(dl,x+1,y-43,5,8,'#e5e6d4');rect(dl,x+1,y-45,5,3,'#f8f0dd');rect(dl,x+6,y-39,8,2,'#b16a42')}}
 
+function fence(f){
+ const st=f.style==='inner'
+  ?{r1:'#cfc6a6',r2:'#e3dbc0',post:'#b9aa80',cap:'#f1e8cc',step:20}
+  :{r1:'#6f5236',r2:'#98764d',post:'#5f4329',cap:'#c9a574',step:24};
+ const hor=f.y1===f.y2,L=Math.hypot(f.x2-f.x1,f.y2-f.y1);
+ for(const [d,c] of [[0,st.r1],[3,st.r2]]){
+  if(hor)line(dl,Math.min(f.x1,f.x2),f.y1+d,Math.max(f.x1,f.x2),f.y1+d,c,1);else line(dl,f.x1+d,Math.min(f.y1,f.y2),f.x1+d,Math.max(f.y1,f.y2),c,1);
+ }
+ const post=(x,y)=>{rect(dl,x+2,y+3,5,6,'#425e4760');rect(dl,x-2,y-3,5,7,st.post);rect(dl,x-1,y-3,3,2,st.cap)};
+ for(let t=0;t<=L;t+=st.step){if(hor)post(Math.min(f.x1,f.x2)+t,f.y1);else post(f.x1,Math.min(f.y1,f.y2)+t)}
+ if(hor)post(Math.max(f.x1,f.x2),f.y1);else post(f.x1,Math.max(f.y1,f.y2));
+}
 function paintObjects(){
  const P=MAP.props;
- for(const b of MAP.buildings){if(b.type==='house')house(b);else if(b.type==='barn')barn(b);else roof(dl,dh,b.x,b.y,b.w,b.h,b.color)}
+ for(const b of MAP.buildings){if(b.type==='house')house(b);else if(b.type==='barn')barn(b);else wiata(b)}
  for(let i=0;i<P.pallets.n;i++){rect(dl,P.pallets.x+i*11,P.pallets.y,8,14,'#a5875f');rect(dl,P.pallets.x+3+i*11,P.pallets.y+2,2,11,'#c2ab80')}
  for(let i=0;i<P.barrels.n;i++){rect(dl,P.barrels.x+i*15,P.barrels.y,11,17,['#64757a','#72846d','#9a664e'][i]);rect(dl,P.barrels.x+1+i*15,P.barrels.y+1,10,3,'#c3bda3')}
  parkedTractor(P.tractor.x,P.tractor.y);
- for(let x=1486;x<1600;x+=18){rect(dl,x,202,3,3,'#a6b68e');rect(dl,x+3,199,3,2,'#849d6e')}
  for(let i=0;i<5;i++){rect(dl,P.laundry.x+i*11,P.laundry.y,7,5,['#d6c6a2','#d9e6d4','#7396b0','#b86156','#d7d1b7'][i]);rect(dl,P.laundry.x+1+i*11,P.laundry.y+1,2,2,'#e9e3ce')}
- const pd=P.pond;rect(dl,pd.x,pd.y,pd.w,pd.h,'#668980');rect(dl,pd.x+3,pd.y+3,pd.w-6,pd.h-7,'#78a69f');rect(dl,pd.x+10,pd.y+8,25,2,'#c4d1ad');
  const tr=P.trough;rect(dl,tr.x,tr.y,tr.w,tr.h,'#867960');rect(dl,tr.x+3,tr.y+2,tr.w-6,tr.h-5,'#72999a');
+ const k=P.kennel;rect(dl,k.x+4,k.y+4,k.w,k.h,'#42564255');rect(dl,k.x,k.y,k.w,k.h,'#6f4f38');rect(dl,k.x+1,k.y+1,k.w-2,k.h-2,'#a5714f');rect(dl,k.x+k.w/2-1,k.y+1,2,k.h-2,'#7d5238');rect(dl,k.x+k.w-4,k.y+k.h-1,5,3,'#2f2a26');
  for(const p of P.poles)pole(p.x,p.y,p.nest);
- // Przewody: dwa tory między końcami poprzeczek, z lekkim zwisem; rysowane w warstwie nadziemnej.
+ // Przewody: dwa tory między końcami poprzeczek, z lekkim zwisem; warstwa nadziemna.
  const pl=P.poles;
  for(let i=0;i<pl.length-1;i++)for(const dx of [-8,7]){
   const x1=pl[i].x+dx,y1=pl[i].y-19,x2=pl[i+1].x+dx,y2=pl[i+1].y-19;
   dh.strokeStyle='#4f5a4cb0';dh.lineWidth=1;dh.beginPath();dh.moveTo(x1,y1);dh.quadraticCurveTo((x1+x2)/2,(y1+y2)/2+6,x2,y2);dh.stroke();
  }
  const s=P.sign;rect(dl,s.x+8,s.y+10,3,19,'#7c7155');rect(dl,s.x,s.y,47,13,'#e1d6b0');rect(dl,s.x+1,s.y+1,45,11,'#607c55');rect(dl,s.x+38,s.y+4,5,3,'#eee0b5');
- for(const f of MAP.fences){
-  for(const rail of [0,4])line(dl,f.x,f.y0+rail,f.x,f.y1+rail,'#ab9770',1);
-  for(let y=f.y0;y<=f.y1;y+=24){rect(dl,f.x-2,y,5,8,'#927b55');rect(dl,f.x-1,y,2,5,'#d7c399')}
- }
+ for(const f of MAP.fences)fence(f);
  const pa=MAP.pasture;pastureFence(pa.x0,pa.y0,pa.x1,pa.y1);
  for(const b of MAP.bales)bale(b);
  for(const s2 of MAP.shrubs)shrub(s2);
@@ -235,8 +272,8 @@ function buildWorld(){
  for(const f of MAP.fields)neighbourField(f);
  paintDitch();
  MAP.woods.forEach(paintWood);
- paintYard();
  paintRoads();
+ paintFarm();
  for(let j=0;j<FLD.n;j++)for(let i=0;i<FLD.n;i++)fieldTile(i,j);
  paintObjects();
 }

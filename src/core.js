@@ -1,6 +1,6 @@
 // Wspólne jednostki, stan symulacji i małe funkcje rysowania.
 // 0.4.0: stały krok czasowy, pauza jako osobny stan, tryb debug, liczniki czasu zamiast modulo klatek.
-export const VERSION='0.4.2';
+export const VERSION='0.4.3';
 export const C=document.querySelector('#game');
 export const ctx=C.getContext('2d',{alpha:false});
 export const VIEW={w:640,h:360,scale:3};
@@ -18,13 +18,15 @@ export const LIGHT={x:.84,y:.54};
 export function shadow(g,x,y,w,h,height=45){const dx=LIGHT.x*height,dy=LIGHT.y*height;poly(g,[[x+6,y+6],[x+w+6,y+6],[x+w+dx,y+h+dy],[x+dx,y+h+dy]],'#40564268')}
 
 export const keys=new Set();
-export const state={x:815,y:304,angle:-Math.PI/2,v:0,steer:0,tool:false,tank:0,time:16*60+35,
+// Start: podwórze gospodarstwa, kombajn skierowany na wyjazd (zachód), heder założony.
+export const START={x:1380,y:515,angle:-Math.PI/2};
+export const state={x:START.x,y:START.y,angle:START.angle,v:0,steer:0,tool:false,headerOn:true,parked:null,tank:0,time:16*60+35,
   elapsed:0,rate:1,work:0,done:false,playing:false,paused:false,mute:true,cut:0};
 // Gra „biegnie”, gdy rozpoczęta i niezapauzowana.
 export const active=()=>state.playing&&!state.paused;
 export const camera={x:state.x-340,y:state.y-200};
 // Liczniki czasu (sekundy) zastępują dawne RT.frame%n — zachowanie nie zależy od odświeżania ekranu.
-export const RT={last:0,frame:0,acc:0,stamp:0,msgT:0,reelSpin:0,birdT:0,wheelTravel:0,lifeT:0,strawT:0,dustT:0,warnT:0,hudT:0};
+export const RT={hintT:0,last:0,frame:0,acc:0,stamp:0,msgT:0,reelSpin:0,birdT:0,wheelTravel:0,lifeT:0,strawT:0,dustT:0,warnT:0,hudT:0};
 export const DEBUG={on:false,fps:0,contacts:0};
 export const fx=[];
 // Jeden przelicznik px/metr na całą mapę i pojazdy.

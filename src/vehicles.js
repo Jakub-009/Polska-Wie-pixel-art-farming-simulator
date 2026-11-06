@@ -14,14 +14,19 @@ rect(cg,-15,-1,30,29,'#ad4b30');rect(cg,-12,0,24,23,'#d49354');rect(cg,-10,2,20,
 rect(cg,-15,33,27,9,'#883c2d');for(let j=0;j<3;j++)rect(cg,-12,34+j*3,20,1,'#d16e4b');
 // Header feed throat and operator cabin front.
 rect(cg,-13,-43,29,8,'#893f2f');rect(cg,-19,-38,37,30,'#723e34');rect(cg,-17,-39,32,27,'#567d82');rect(cg,-15,-37,28,18,'#81a2a2');rect(cg,-15,-37,27,3,'#c5d2bc');rect(cg,-14,-16,26,3,'#394a4d');rect(cg,11,-31,5,13,'#344c4e');rect(cg,-15,-15,9,3,'#d5ab62');
-// Warning reflectors and asymmetrical unloading auger.
-rect(cg,-20,31,3,5,'#edc46c');rect(cg,16,31,3,5,'#f4d275');rect(cg,20,-4,17,5,'#b94632');rect(cg,35,-6,5,8,'#7c3e30');rect(cg,36,-5,2,3,'#e6a15b');
+// Światła ostrzegawcze. Rura rozładunkowa jest złożona (schowana) — nie rysujemy jej w czasie jazdy.
+rect(cg,-20,31,3,5,'#edc46c');rect(cg,16,31,3,5,'#f4d275');
+cg.restore()}
+drawCombine();
+// Heder jako osobny sprite (ten sam układ współrzędnych co korpus) — można go zdjąć i odstawić.
+const headerCv=document.createElement('canvas');headerCv.width=120;headerCv.height=132;const hg=headerCv.getContext('2d');hg.imageSmoothingEnabled=false;
+function drawHeaderSprite(){hg.clearRect(0,0,120,132);hg.save();hg.translate(60,69);const cg=hg;
 // Front cutter housing and long wheat header (work width ~80px).
 rect(cg,-12,-54,26,13,'#8c3727');rect(cg,-43,-59,88,14,'#9f3e2b');rect(cg,-44,-60,88,4,'#dc6646');rect(cg,-44,-46,88,3,'#6d422f');rect(cg,-41,-56,82,7,'#cb5135');for(let x=-42;x<=41;x+=6){rect(cg,x,-63,4,6,'#8d6640');rect(cg,x+1,-63,2,3,'#d0a16a')}
 // Reel: diagonal braces and central axis; additional RT.frame animated at draw-time.
 rect(cg,-38,-54,77,2,'#f0b875');for(let x=-37;x<40;x+=11)rect(cg,x,-56,2,9,'#6a492c');
-cg.restore()}
-drawCombine();
+hg.restore()}
+drawHeaderSprite();
 // Cień w układzie świata (nie obraca się z maszyną): otoczka wypukła prostokątów i ich przesunięcia o LIGHT*h.
 // boxes: [połówka szerokości, połówka długości, przesunięcie środka wzdłuż osi].
 function orientedShadow(g,x,y,ang,boxes,h,col='#34472e3a'){
@@ -53,8 +58,19 @@ function drawRotated(g,x,y,angle,draw){
 // Shared combine renderer. Wymiary (px, 12 px = 1 m): nadwozie 41 px (3,4 m), z kołami ~50 px, heder 88 px (7,3 m).
 // Z góry skręcają tylko tylne koła (kąt jak w modelu jazdy, 0,6 rad), bieżnik przesuwa się zgodnie z kierunkiem jazdy
 // z prędkością maszyny (górna powierzchnia opony jedzie do przodu względem kadłuba).
-function drawMachineAt(g,x,y,angle,steer,travel,working,scale=COMBINE_SCALE){
- orientedShadow(g,x,y,angle,[[27*scale,45.5*scale,.5*scale],[44*scale,9*scale,-54*scale]],18);
+function drawHeaderDynamic(s,working,travel){
+ if(working){
+  const q=Math.round(Math.sin(RT.reelSpin*1.35));
+  rect(s,-35,-52+q,70,1,'#edbc73');
+  for(let i=-34;i<36;i+=13)rect(s,i,-57+(Math.floor(RT.reelSpin)%4),2,4,'#ad673f');
+ }
+ const reel=Math.floor((working?RT.reelSpin:travel*.12))%5;
+ for(let i=-40;i<42;i+=8)rect(s,i,-56+(reel+5)%3,3,2,working?'#f2c078':'#b98b57');
+ rect(s,-2,-66,5,2,working?'#e7d06f':'#71604b');
+}
+function drawMachineAt(g,x,y,angle,steer,travel,working,withHeader=true,scale=COMBINE_SCALE){
+ const boxes=[[27*scale,45.5*scale,.5*scale]];if(withHeader)boxes.push([44*scale,9*scale,-54*scale]);
+ orientedShadow(g,x,y,angle,boxes,18);
  drawRotated(g,x,y,angle,s=>{
   s.scale(scale,scale);
   const off=Math.round((((-travel)%5)+5)%5);
@@ -72,22 +88,25 @@ function drawMachineAt(g,x,y,angle,steer,travel,working,scale=COMBINE_SCALE){
    }
   }
   s.drawImage(combine,-60,-69);
-  if(working){
-   const q=Math.round(Math.sin(RT.reelSpin*1.35));
-   rect(s,-35,-52+q,70,1,'#edbc73');
-   for(let i=-34;i<36;i+=13)rect(s,i,-57+(Math.floor(RT.reelSpin)%4),2,4,'#ad673f');
-  }
-  const reel=Math.floor((working?RT.reelSpin:travel*.12))%5;
-  for(let i=-40;i<42;i+=8)rect(s,i,-56+(reel+5)%3,3,2,working?'#f2c078':'#b98b57');
-  rect(s,-2,-66,5,2,working?'#e7d06f':'#71604b');
+  if(withHeader){s.drawImage(headerCv,-60,-69);drawHeaderDynamic(s,working,travel)}
  });
+}
+// Heder odstawiony na ziemi: środek (x,y), kierunek „do przodu” jak w momencie zdjęcia.
+function drawParkedHeader(g,x,y,angle){
+ orientedShadow(g,x,y,angle,[[44,9,0]],7);
+ drawRotated(g,x,y,angle,s=>{s.drawImage(headerCv,-60,-69+54);drawHeaderDynamic2(s)});
+}
+function drawHeaderDynamic2(s){ // statyczne zęby bębna na zdjętym hederze (przesunięcie o +54 względem układu korpusu)
+ for(let i=-40;i<42;i+=8)rect(s,i,-56+54+1,3,2,'#b98b57');
+ rect(s,-2,-66+54,5,2,'#71604b');
 }
 // Obrys kolizji kombajnu: kabina z przednią osią, tył z silnikiem i heder (obrócone prostokąty w świecie).
 function playerObbs(){
  const k=COMBINE_SCALE,a=state.angle;
  const [fx,fy]=worldOffset(0,-22.5*k),[rx,ry]=worldOffset(0,23*k),[hx,hy]=worldOffset(0,-54*k);
- return [obb(fx,fy,26*k,22.5*k,a),obb(rx,ry,22*k,23*k,a),obb(hx,hy,44*k,9*k,a)];
+ const o=[obb(fx,fy,26*k,22.5*k,a),obb(rx,ry,22*k,23*k,a)];
+ if(state.headerOn)o.push(obb(hx,hy,44*k,9*k,a));return o;
 }
-function drawHarvester(){drawMachineAt(ctx,state.x,state.y,state.angle,state.steer,RT.wheelTravel,state.tool)}
+function drawHarvester(){drawMachineAt(ctx,state.x,state.y,state.angle,state.steer,RT.wheelTravel,state.tool&&state.headerOn,state.headerOn)}
 
-export {worldOffset,drawMachineAt,drawHarvester,playerObbs,orientedShadow,drawRotated};
+export {worldOffset,drawMachineAt,drawHarvester,drawParkedHeader,playerObbs,orientedShadow,drawRotated};

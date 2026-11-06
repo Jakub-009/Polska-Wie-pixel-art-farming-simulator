@@ -1,6 +1,6 @@
 // Punkt wejścia: symulacja (stały krok), kolizje, kamera, ekran, restart i testy.
 // 0.4.0: mapa jako dane + kolizje OBB ze ślizganiem, pojazdy NPC na grafie dróg, poprawki 0.3.3.
-import {C,ctx,VIEW,$,clamp,lerp,WORLD,FLD,N,keys,state,camera,RT,fx,COMBINE_SCALE,MAXSPEED,ROAD_SPEED,REVERSE_SPEED,toast,FIELD_HA,DEBUG,active} from './core.js';
+import {START,C,ctx,VIEW,$,clamp,lerp,WORLD,FLD,N,keys,state,camera,RT,fx,COMBINE_SCALE,MAXSPEED,ROAD_SPEED,REVERSE_SPEED,toast,FIELD_HA,DEBUG,active} from './core.js';
 import {crop,fieldTile,tc,buildWorld} from './world.js';
 import {harvest,updateTracks,particle} from './harvest.js';
 import {worldOffset,playerObbs} from './vehicles.js';
@@ -8,9 +8,11 @@ import {drawWorld} from './render.js';
 import {hud} from './ui.js';
 import {updateSound,birdNote} from './sound.js';
 import {bindControls} from './controls.js';
-import {MAP,nearbyColliders} from './map.js';
-import {collide} from './geometry.js';
-import {updateLife,dynamicColliders,lifeInfo} from './life.js';
+import {MAP,nearbyColliders,pointBlocked} from './map.js';
+import {collide,obb} from './geometry.js';
+import {updateLife,dynamicColliders as lifeColliders,lifeInfo} from './life.js';
+import {parkedObb,headerHint,toggleHeader} from './header.js';
+function dynamicColliders(){const d=lifeColliders(),p=parkedObb();if(p)d.push(p);return d}
 const STEP=1/60;
 function approach(v,to,amount){return v<to?Math.min(v+amount,to):Math.max(v-amount,to)}
 
@@ -52,7 +54,7 @@ function step(dt){
  state.x=clamp(state.x+Math.sin(state.angle)*state.v*dt,28,WORLD.w-28);
  state.y=clamp(state.y-Math.cos(state.angle)*state.v*dt,36,WORLD.h-36);
  updateLife(dt);
- resolveCollisions();
+ resolveCollisions();headerHint(dt);
  RT.warnT-=dt;
  RT.reelSpin+=state.tool?dt*12:0;RT.wheelTravel+=state.v*dt;RT.lifeT+=dt;
  harvest(dt);updateTracks(dt);
@@ -110,7 +112,7 @@ function reset(){
  crop.fill(0);state.cut=0;
  for(let j=0;j<FLD.n;j++)for(let i=0;i<FLD.n;i++)fieldTile(i,j);
  tc.clearRect(0,0,WORLD.w,WORLD.h);fx.length=0;keys.clear();
- Object.assign(state,{x:815,y:304,angle:-Math.PI/2,v:0,steer:0,tool:false,tank:0,work:0,done:false,paused:false,time:16*60+35,elapsed:0,rate:1});
+ Object.assign(state,{x:START.x,y:START.y,angle:START.angle,headerOn:true,parked:null,v:0,steer:0,tool:false,tank:0,work:0,done:false,paused:false,time:16*60+35,elapsed:0,rate:1});
  camera.x=state.x-VIEW.w*.5;camera.y=state.y-VIEW.h*.5;clampCamera();
  RT.stamp=0;RT.reelSpin=0;RT.birdT=0;RT.wheelTravel=0;RT.lifeT=0;RT.strawT=0;RT.dustT=0;RT.warnT=0;
  hud();
@@ -120,7 +122,7 @@ bindControls(reset);
 camera.x=state.x-VIEW.w*.5;camera.y=state.y-VIEW.h*.5;clampCamera();
 // Diagnostyka (testy i debug)
 window.__farmDebug={
- state:()=>({x:state.x,y:state.y,v:state.v,heading:state.angle,steer:state.steer,tool:state.tool,cut:state.cut,total:N,percent:state.cut/N*100,playing:state.playing,paused:state.paused,elapsed:state.elapsed,time:state.time,tank:state.tank}),
+ state:()=>({headerOn:state.headerOn,parked:state.parked,x:state.x,y:state.y,v:state.v,heading:state.angle,steer:state.steer,tool:state.tool,cut:state.cut,total:N,percent:state.cut/N*100,playing:state.playing,paused:state.paused,elapsed:state.elapsed,time:state.time,tank:state.tank}),
  setPosition:(x,y,a)=>{state.x=x;state.y=y;if(a!=null)state.angle=a;camera.x=x-VIEW.w/2;camera.y=y-VIEW.h/2;clampCamera()},
  setSpeed:v=>state.v=v,
  setTool:b=>state.tool=b,
@@ -130,6 +132,27 @@ window.__farmDebug={
  life:()=>lifeInfo(),
  colliders:()=>MAP.colliders.length,
  overlap:()=>{let n=0;const near=nearbyColliders(state.x,state.y,120).concat(dynamicColliders());for(const o of playerObbs())for(const c of near)if(collide(o,c))n++;return n},
+ toggleHeader,
+ // Test przejezdności: BFS po stanach (komórka 8 px × 8 kierunków). Ruch: do przodu/do tyłu wzdłuż kierunku albo obrót w miejscu;
+ // pozycja dozwolona, gdy żaden z obrysów kombajnu (z hederem lub bez) nie koliduje ze stałymi przeszkodami.
+ reach:(withHeader,fx,fy,targets)=>{
+  const S=8,X0=860,X1=1960,Y0=0,Y1=1150,W=Math.ceil((X1-X0)/S),H=Math.ceil((Y1-Y0)/S),K=COMBINE_SCALE;
+  const pose=(x,y,a)=>{const c=Math.cos(a),s=Math.sin(a),off=(ly)=>[x-s*ly*K,y+c*ly*K];const [f1,f2]=off(-22.5),[r1,r2]=off(23),[h1,h2]=off(-54);
+   const o=[obb(f1,f2,26*K,22.5*K,a),obb(r1,r2,22*K,23*K,a)];if(withHeader)o.push(obb(h1,h2,44*K,9*K,a));return o};
+  const ok=(x,y,a)=>{if(x<X0+30||x>X1-30||y<38||y>Y1)return false;const near=nearbyColliders(x,y,110);for(const o of pose(x,y,a))for(const c of near)if(collide(o,c))return false;return true};
+  const key=(x,y,k)=>((Math.round((y-Y0)/S)*W+Math.round((x-X0)/S))*8+k);
+  const seen=new Uint8Array(W*H*8),q=[];
+  let k0=0;{let best=9;for(let k=0;k<8;k++){const d=Math.abs(Math.atan2(Math.sin(k*Math.PI/4-state.angle),Math.cos(k*Math.PI/4-state.angle)));if(d<best){best=d;k0=k}}}
+  if(!ok(fx,fy,k0*Math.PI/4))return{start:'zablokowany'};
+  seen[key(fx,fy,k0)]=1;q.push([fx,fy,k0]);
+  for(let h=0;h<q.length;h++){
+   const [x,y,k]=q[h],a=k*Math.PI/4;
+   const nb=[];
+   for(const d of [1,-1]){nb.push([x+Math.sin(a)*S*d,y-Math.cos(a)*S*d,k]);nb.push([x,y,(k+d+8)%8])}
+   for(const [nx,ny,nk] of nb){const kk=key(nx,ny,nk);if(nx<X0||ny<0||nx>=X1||ny>=Y1||seen[kk])continue;if(ok(nx,ny,nk*Math.PI/4)){seen[kk]=1;q.push([Math.round(nx/S)*S,Math.round(ny/S)*S,nk])}}
+  }
+  return targets.map(t=>{let hit=false;for(let k=0;k<8;k++)if(seen[key(t[0],t[1],k)])hit=true;return[t[0],t[1],hit]});
+ },
  debug:b=>{DEBUG.on=b!=null?b:!DEBUG.on},
  camera:()=>({x:camera.x,y:camera.y,w:VIEW.w,h:VIEW.h,scale:VIEW.scale}),
  fieldInfo:()=>({ha:FIELD_HA,cut:state.cut,remaining:N-state.cut})
