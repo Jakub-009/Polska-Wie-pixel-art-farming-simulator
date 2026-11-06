@@ -1,6 +1,6 @@
 :root{color-scheme:dark;font-family:ui-monospace,SFMono-Regular,Consolas,'Liberation Mono',monospace}
 *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#18241d;touch-action:none;user-select:none}
-#game{display:block;width:100vw;height:100dvh;image-rendering:pixelated;image-rendering:crisp-edges}
+#game{display:block;image-rendering:pixelated;image-rendering:crisp-edges}
 .ui{position:absolute;inset:0;pointer-events:none;color:#f5edce;text-shadow:1px 2px #282e20;font-size:12px;letter-spacing:.03em}
 .top{position:absolute;top:15px;left:17px;right:17px;display:flex;align-items:start;justify-content:space-between;gap:10px}
 .plate{background:#24382fdf;border:1px solid #a4ab83a0;box-shadow:0 3px 0 #15251d99, inset 0 1px 0 #657a60a0;padding:9px 12px;border-radius:3px}
