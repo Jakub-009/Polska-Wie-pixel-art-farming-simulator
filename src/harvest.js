@@ -3,7 +3,7 @@ import {FLD,N,state,RT,fx,COMBINE_SCALE,HEADER_HALF,HEADER_MIN,HEADER_MAX,FIELD_
 import {crop,fieldTile,tc} from './world.js';
 import {worldOffset} from './vehicles.js';
 import {finish} from './ui.js';
-function harvest(){
+function harvest(dtH=1/60){
  if(!state.tool||state.v<3)return;
  let m=0;
  // Sweep a real working swath, including just in front of the cutter; never whole field tiles at once.
@@ -18,10 +18,11 @@ function harvest(){
  if(m){
    state.work+=m;
    state.tank=clamp((state.cut/N)*FIELD_HA*YIELD_T_HA/TANK_T,0,1);
-   if(RT.frame%3===0)for(let k=0;k<2;k++){
+   RT.strawT-=dtH;
+   if(RT.strawT<=0){RT.strawT=.05;for(let k=0;k<2;k++){
      let [x,y]=worldOffset((Math.random()-.5)*57*COMBINE_SCALE,-45*COMBINE_SCALE);
      particle('straw',x,y);
-   }
+   }}
    if(state.cut/N>=FINISH_SHARE){state.done=true;state.playing=false;finish()}
  }
 }
@@ -41,6 +42,5 @@ function updateTracks(dt){
  }
  tc.globalAlpha=1;
 }
-// Browser-native layered sound: engine, threshing, wind. Created ONLY after a user gesture.
 
 export {harvest,particle,updateTracks};
