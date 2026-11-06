@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Polska Wieś — Żniwa 0.6.1</title>
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+<canvas id="game" aria-label="Gra Polska Wieś: Żniwa. Sterowanie kombajnem WASD; Spacja włącza heder." tabindex="0"></canvas>
+<div class="ui">
+  <div class="top"><div class="plate"><div class="brand">POLSKA WIEŚ <span style="color:#e4bd6e">/ ŻNIWA</span></div><div class="sub">GOSPODARSTWO POD LIPAMI · 0.6.1</div></div>
+  <div class="plate topright"><div class="clock"><span id="time">16:35</span> <span style="font-size:12px;color:#e2c080">☀</span></div><div class="sub">16 SIERPNIA · CZAS <span id="rate">1×</span></div><div style="margin-top:7px"><button id="speedbtn" class="topbtn">T · CZAS</button><button id="soundbtn" class="topbtn">♪ WYŁ.</button><button id="settingsbtn" class="topbtn">⚙</button></div></div></div>
+  <div id="hints" class="plate hints"></div>
+  <div id="msg" role="status" aria-live="polite"></div>
+  <div class="bottom"><div class="plate stat"><div><strong id="speed">0</strong><span class="muted"> KM/H</span> <span id="toolstatus" style="color:#e4c580;font-size:10px;float:right;margin-top:10px">HEDER ↑</span></div><div class="muted"><span id="tanklabel">ZBIORNIK</span> · <span id="tanktext">0,00 / 0,8 t</span></div><div class="bar"><div id="tankbar"></div></div><div class="muted" style="margin-top:3px">PRZYCZEPA · <span id="trltext">0,00 / 2,0 t</span></div><div class="muted">SILOSY · <span id="stored">0,00 / 3,0</span> t · KASA <span id="money">0</span> zł</div></div><div class="plate stat" style="text-align:right"><div style="font-size:11px;color:#e5d8a4">SKOSZONO <strong id="progress">0,0%</strong></div><div class="bar"><div id="progressbar" style="background:#88a26c"></div></div><div class="muted" id="area">0,00 / 0,28 ha · 00:00</div></div></div>
+</div>
+<div id="mobile"><div class="touch left"><button data-key="a">◀</button><button data-key="d">▶</button></div><div class="touch right"><button data-key="s">▼<small>TYŁ</small></button><button data-key="w">▲<small>GAZ</small></button><button id="mobilehdr" class="tool">H<small>ZDEJMIJ</small></button><button id="mobiletool" class="tool">HEDER<small>WŁ./WYŁ.</small></button></div><div class="touch upper"><button data-act="v">V<small>POJAZD</small></button><button data-act="u">U<small>RURA</small></button><button data-act="j">J<small>ROZŁ.</small></button><button data-act="r">R<small>ZACZEP</small></button><button data-act="e">E<small>WYSYP</small></button><button data-act="k">K<small>SPRZEDAJ</small></button><button data-act="b">B<small>ODBLOKUJ</small></button></div></div>
+<div id="overlay"><div class="card"><div class="kicker">POLSKIE LATO • GRA PRZEGLĄDARKOWA</div><h1 id="cardtitle">Żniwa na polskiej wsi</h1><p id="cardtext">Sierpniowe żniwa w żyjącej polskiej wsi. Koś pszenicę równymi pasami, a na sąsiednich polach i drogach wypatruj pracy innych maszyn, zwierząt oraz mieszkańców. Skoszenie pola zajmuje około 5–8 minut.</p><div class="keys" id="keylegend"><span><b>W / S</b> gaz / cofanie</span><span><b>A / D</b> skręcanie</span><span><b>SPACJA</b> heder / agregat / siewnik w dół i w górę</span><span><b>H</b> zdejmij / załóż heder (wózek)</span><span><b>V</b> traktor / kombajn</span><span><b>U</b> rura · <b>J</b> rozładunek</span><span><b>R</b> zaczep / odczep wózka</span><span><b>E</b> wysyp przyczepy (nad koszem)</span><span><b>K</b> sprzedaj zboże</span><span><b>G</b> przyspiesz wzrost (test)</span><span><b>B</b> odblokuj pojazd</span><span><b>Z</b> / kółko: oddalenie</span><span><b>T</b> czas · <b>P</b> pauza · <b>M</b> dźwięk</span><span><b>F1</b> pomoc · <b>Esc</b> ustawienia</span></div><button id="continue" style="display:none">KONTYNUUJ ZAPISANĄ GRĘ</button><button id="start">ROZPOCZNIJ ŻNIWA</button><div class="hint">WASD lub przyciski dotykowe · wersja 0.6.1</div></div></div>
+<div id="settings" class="hidden panel"><div class="card"><div class="kicker">USTAWIENIA</div>
+<label>Głośność <input id="set-volume" type="range" min="0" max="100"></label>
+<label><input id="set-particles" type="checkbox"> Cząsteczki (pył, ziarno, plusk)</label>
+<label><input id="set-hints" type="checkbox"> Podpowiedzi i znaczniki</label>
+<p class="hint2">Zoom: Z, + / − albo kółko myszy. Zapis gry odbywa się automatycznie co 20 s.</p>
+<button id="set-newgame" class="sec">NOWA GRA (kasuje zapis)</button><button id="set-close">ZAMKNIJ</button></div></div>
+<div id="help" class="hidden panel"><div class="card"><div class="kicker">STEROWANIE</div><div class="keys"><span><b>W / S</b> gaz / cofanie</span><span><b>A / D</b> skręcanie</span><span><b>SPACJA</b> heder / agregat / siewnik w dół i w górę</span><span><b>H</b> zdejmij / załóż heder (wózek)</span><span><b>V</b> traktor / kombajn</span><span><b>U</b> rura · <b>J</b> rozładunek</span><span><b>R</b> zaczep / odczep wózka</span><span><b>E</b> wysyp przyczepy (nad koszem)</span><span><b>K</b> sprzedaj zboże</span><span><b>G</b> przyspiesz wzrost (test)</span><span><b>B</b> odblokuj pojazd</span><span><b>Z</b> / kółko: oddalenie</span><span><b>T</b> czas · <b>P</b> pauza · <b>M</b> dźwięk</span><span><b>F1</b> pomoc · <b>Esc</b> ustawienia</span></div><button id="help-close">ZAMKNIJ (F1)</button></div></div>
+<script type="module" src="./src/main.js"></script>
+</body></html>
