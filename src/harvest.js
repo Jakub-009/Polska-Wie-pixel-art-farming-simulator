@@ -4,7 +4,7 @@ import {crop,fieldTile,tc} from './world.js';
 import {worldOffset} from './vehicles.js';
 import {finish} from './ui.js';
 function harvest(dtH=1/60){
- if(!state.tool||!state.headerOn||state.v<3)return;
+ if(state.vehicle!=='combine'||!state.tool||!state.headerOn||state.v<3)return;
  let m=0;
  // Sweep a real working swath, including just in front of the cutter; never whole field tiles at once.
  for(let u=-HEADER_HALF;u<=HEADER_HALF;u+=3.5){for(let f=HEADER_MIN;f<=HEADER_MAX;f+=4){

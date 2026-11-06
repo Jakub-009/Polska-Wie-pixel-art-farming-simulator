@@ -52,6 +52,13 @@ Potem otwórz `http://localhost:8000/`. Alternatywnie użyj rozszerzenia Live Se
 | `src/controls.js` | Klawiatura, dotyk, pauza |
 | `src/main.js` | Stały krok symulacji, kolizje, kamera, restart, diagnostyka |
 
+## Zmiany w 0.4.4
+- Usunięte stare rekwizyty z podwórza (palety, beczki, poidło, stojący traktor).
+- Kury i ludzie uciekają przed pojazdem i nie wchodzą pod heder; ludzie nie przesuwają już maszyn.
+- Jelenie i lisy wędrują po całej mapie, omijając gospodarstwo, pastwisko i drogi.
+- Traktor testowy (V — przesiadka): ta sama fizyka i animacje co kombajn, szybszy, przednie koła skręcają. Drugi pojazd stoi w miejscu jako przeszkoda.
+- Zoom kamery: Z, +/−, kółko myszy (całkowite skale pikseli, obraz zostaje ostry).
+
 ## Zmiany w 0.4.3
 - Gospodarstwo przebudowane według szkicu: brązowy płot, wjazd od zachodu (między ogrodem a wiatą), brama północna z drogą na „drugie pole” (wkrótce), podwórze z błotem, kałużami i kurami, ogródek z domem, psem i budą, stajnia, stodoła, wiata.
 - Kombajn (także z hederem) przejeżdża wszędzie po podwórzu — sprawdzone testem przejezdności.

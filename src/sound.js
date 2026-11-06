@@ -31,7 +31,7 @@ function updateSound(gas){
  const {ac,master,engA,engB,engineF,engineG,threshG,windG}=snd,t=ac.currentTime;
  const on=active()&&!state.mute;
  master.gain.setTargetAtTime(on?.30:0,t,.08);
- const speed=Math.abs(state.v)/MAXSPEED;
+ const speed=Math.min(1.8,Math.abs(state.v)/(state.vehicle==="tractor"?30:MAXSPEED));
  // Revs depend on throttle and workload, not solely ground speed.
  const pitch=52+speed*26+(gas?13:0)+(state.tool&&gas?4:0);
  engA.frequency.setTargetAtTime(pitch,t,.11);

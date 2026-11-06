@@ -52,9 +52,6 @@ export const BUILDINGS=[
  {id:'barn',type:'barn',x:1485,y:793,w:368,h:149,color:'#8c5142'}        // inne zabudowania (południe)
 ];
 export const PROPS={
- tractor:{x:1275,y:600},
- pallets:{x:1400,y:860,n:6},barrels:{x:1250,y:900,n:3},
- trough:{x:1420,y:560,w:31,h:15},
  kennel:{x:1238,y:332,w:22,h:20},
  poles:[], // generowane niżej wzdłuż drogi głównej
  sign:{x:1002,y:395},laundry:{x:1290,y:392}
@@ -79,10 +76,6 @@ export const colliders=[];
 function addRect(x,y,w,h,id){colliders.push({shape:'obb',x:x+w/2,y:y+h/2,hw:w/2,hh:h/2,a:0,id,br:Math.hypot(w,h)/2})}
 function addCircle(x,y,r,id){colliders.push({shape:'circle',x,y,r,id,br:r})}
 for(const b of BUILDINGS)addRect(b.x,b.y,b.w+2,b.h+10,b.id);
-addRect(PROPS.tractor.x+1,PROPS.tractor.y-8,38,59,'tractor');
-addRect(PROPS.pallets.x,PROPS.pallets.y,PROPS.pallets.n*11,14,'pallets');
-addRect(PROPS.barrels.x,PROPS.barrels.y,PROPS.barrels.n*15,17,'barrels');
-addRect(PROPS.trough.x,PROPS.trough.y,PROPS.trough.w,PROPS.trough.h,'trough');
 addRect(PROPS.kennel.x,PROPS.kennel.y,PROPS.kennel.w,PROPS.kennel.h,'kennel');
 for(const p of PROPS.poles)addCircle(p.x,p.y+11,5,'pole');
 addRect(PROPS.sign.x+8,PROPS.sign.y+10,3,19,'sign');
@@ -98,7 +91,7 @@ for(const f of FENCES){
 const inRect=(x,y,r,m=0)=>x>r.x-m&&x<r.x+r.w+m&&y>r.y-m&&y<r.y+r.h+m;
 const mainField={x:FLD.x,y:FLD.y,w:FLD.w,h:FLD.h};
 const solids=[...BUILDINGS.map(b=>({x:b.x,y:b.y,w:b.w+2,h:b.h+10})),
- {x:PROPS.tractor.x,y:PROPS.tractor.y-8,w:40,h:60},PROPS.trough,
+
  {x:PASTURE.x0-6,y:PASTURE.y0-6,w:PASTURE.x1-PASTURE.x0+12,h:PASTURE.y1-PASTURE.y0+12}];
 function free(x,y,r,o={}){
  if(x<4||y<4||x>WORLD.w-4||y>WORLD.h-4)return false;

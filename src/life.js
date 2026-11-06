@@ -3,8 +3,19 @@
 import {ctx,rect,line,hash,FLD,camera,VIEW,state,RT,clamp,WORLD,LIGHT} from './core.js';
 import {crop} from './world.js';
 import {drawMachineAt,playerObbs,orientedShadow,drawRotated} from './vehicles.js';
-import {MAP,ROADS,pointBlocked} from './map.js';
-import {obb,circle,collide} from './geometry.js';
+import {MAP,ROADS,pointBlocked,roadClearance} from './map.js';
+import {obb,circle,collide,obbCircle} from './geometry.js';
+// Odległość punktu od obrysu pojazdu gracza (0 = w środku) i wypchnięcie okręgu z obrysu.
+function distToObb(o,x,y){const cs=Math.cos(o.a),sn=Math.sin(o.a),dx=x-o.x,dy=y-o.y,px=dx*cs+dy*sn,py=-dx*sn+dy*cs;return Math.hypot(px-clamp(px,-o.hw,o.hw),py-clamp(py,-o.hh,o.hh))}
+function vehDist(x,y){let m=1e9;for(const o of playerObbs())m=Math.min(m,distToObb(o,x,y));return m}
+function pushOutOfVehicle(e,r){for(const o of playerObbs()){const m=obbCircle(o,{x:e.x,y:e.y,r});if(m){e.x-=m.nx*(m.depth+.5);e.y-=m.ny*(m.depth+.5)}}}
+// Miejsca zaludnione, których dzikie zwierzęta unikają: gospodarstwo z otoczeniem, pastwisko z krowami i drogi.
+function populated(x,y){
+ const F=MAP.farm;
+ if(x>F.x-150&&x<F.x+F.w+150&&y>F.y-150&&y<F.y+F.h+150)return true;
+ const P=MAP.pasture;if(x>P.x0-60&&x<P.x1+60&&y>P.y0-60&&y<P.y1+60)return true;
+ return roadClearance(x,y)<45;
+}
 
 // ───────── rysowanie dekoracji reagujących na wiatr ─────────
 function drawLivingWorld(){
@@ -189,8 +200,19 @@ class Walker{
 class Person{
  constructor(route,speed,coat,scale,wait,phase){Object.assign(this,{route,speed,coat,scale,wait,idx:0,dir:1,t:phase,x:route[0][0],y:route[0][1],waitT:0,step:0,shape:circle(route[0][0],route[0][1],5)})}
  update(dt){
-  const dist=Math.hypot(state.x-this.x,state.y-this.y);
-  if(dist<95&&Math.abs(state.v)>1){this.shape=circle(this.x,this.y,5);return} // przepuszcza maszynę
+  // Ucieka przed pojazdem gracza (jak zwierzęta), zamiast go blokować.
+  const vd=vehDist(this.x,this.y);
+  if(vd<(Math.abs(state.v)>1?65:26))this.fleeT=1.1;
+  if(this.fleeT>0){
+   this.fleeT-=dt;
+   const away=Math.atan2(this.y-state.y,this.x-state.x);
+   for(const off of [0,.7,-.7,1.4,-1.4]){
+    const nx=this.x+Math.cos(away+off)*46*dt,ny=this.y+Math.sin(away+off)*46*dt;
+    if(!pointBlocked(nx,ny,6)){this.x=nx;this.y=ny;break}
+   }
+   pushOutOfVehicle(this,6);
+   this.step+=dt*9;this.shape=circle(this.x,this.y,5);return;
+  }
   if(this.waitT>0){this.waitT-=dt;return}
   const tgt=this.route[this.idx+this.dir];
   const dx=tgt[0]-this.x,dy=tgt[1]-this.y,d=Math.hypot(dx,dy),stp=this.speed*dt;
@@ -241,33 +263,42 @@ class Cow{
 }
 // ───────── jelenie: grupy wędrują po trasach przez otwarte pola, żerują, a przed maszyną uciekają ─────────
 class DeerGroup{
- constructor(route,n,seed){
-  this.route=route;this.seed=seed;this.idx=0;this.dir=1;this.waitT=2+hash(seed,1)*5;this.running=false;
-  this.members=Array.from({length:n},(_,k)=>({ox:(hash(seed,k+2)-.5)*34,oy:(hash(seed,k+9)-.5)*34,x:route[0][0],y:route[0][1],heading:0,phase:hash(seed,k)*6}));
-  this.lead={x:route[0][0],y:route[0][1],heading:0};this.turns=0;
+ constructor(start,n,seed){
+  this.seed=seed;this.n=0;this.waitT=2+hash(seed,1)*5;this.running=false;this.target=null;
+  this.members=Array.from({length:n},(_,k)=>({ox:(hash(seed,k+2)-.5)*34,oy:(hash(seed,k+9)-.5)*34,x:start[0],y:start[1],heading:0,phase:hash(seed,k)*6}));
+  this.lead={x:start[0],y:start[1],heading:0};
   for(const m of this.members){m.x+=m.ox;m.y+=m.oy}
+ }
+ rnd(){return hash(this.seed,100+this.n++)}
+ ok(x,y){return x>25&&x<WORLD.w-25&&y>25&&y<WORLD.h-25&&!pointBlocked(x,y,12)&&!populated(x,y)}
+ segOk(ax,ay,bx,by){const d=Math.hypot(bx-ax,by-ay);for(let t=20;t<d;t+=20)if(!this.ok(ax+(bx-ax)*t/d,ay+(by-ay)*t/d))return false;return true}
+ choose(away){
+  const L=this.lead,base=Math.atan2(L.y-state.y,L.x-state.x);
+  for(let k=0;k<40;k++){
+   const ang=away?base+(this.rnd()-.5)*1.8:this.rnd()*6.283,d=away?230+this.rnd()*260:140+this.rnd()*420;
+   const x=L.x+Math.cos(ang)*d,y=L.y+Math.sin(ang)*d;
+   if(this.ok(x,y)&&this.segOk(L.x,L.y,x,y)){this.target=[x,y];return true}
+  }
+  return false;
  }
  update(dt){
   const L=this.lead,pd=Math.hypot(state.x-L.x,state.y-L.y);
-  const scared=pd<130||(this.running&&pd<210);
-  if(scared&&!this.running){ // uciekaj od maszyny: wybierz koniec trasy dalej od gracza
-   this.running=true;this.waitT=0;
-   const a=this.route[Math.max(0,Math.min(this.route.length-1,this.idx))],b=this.route[Math.max(0,Math.min(this.route.length-1,this.idx+this.dir))];
-   const far=this.route[0],end=this.route[this.route.length-1];
-   const target=Math.hypot(state.x-far[0],state.y-far[1])>Math.hypot(state.x-end[0],state.y-end[1])?0:this.route.length-1;
-   this.dir=target>=this.idx?1:-1;
-  }
+  const scared=pd<140||(this.running&&pd<220);
+  if(scared&&!this.running){this.running=true;this.waitT=0;if(!this.choose(true))this.choose(false)}
   if(!scared)this.running=false;
-  if(this.waitT>0&&!this.running){this.waitT-=dt;for(const m of this.members)m.phase+=dt*.4;return}
-  const ni=this.idx+this.dir;
-  if(ni<0||ni>=this.route.length){this.dir=-this.dir;this.waitT=6+hash(this.seed,this.turns++)*10;return}
-  const tg=this.route[ni],dx=tg[0]-L.x,dy=tg[1]-L.y,d=Math.hypot(dx,dy),sp=(this.running?48:15)*dt;
-  L.heading=Math.atan2(dy,dx);
-  if(d<=sp){L.x=tg[0];L.y=tg[1];this.idx=ni;if(!this.running&&hash(this.seed,this.turns++)>.45)this.waitT=5+hash(this.seed,this.turns)*9}
-  else{L.x+=dx/d*sp;L.y+=dy/d*sp}
+  if(!this.target){
+   for(const m of this.members)m.phase+=dt*.4;
+   this.waitT-=dt;
+   if(this.waitT<=0){if(!this.choose(false))this.waitT=3}
+  }else{
+   const dx=this.target[0]-L.x,dy=this.target[1]-L.y,d=Math.hypot(dx,dy),sp=(this.running?50:15)*dt;
+   L.heading=Math.atan2(dy,dx);
+   if(d<=sp){L.x=this.target[0];L.y=this.target[1];this.target=null;this.waitT=5+this.rnd()*12}
+   else{L.x+=dx/d*sp;L.y+=dy/d*sp}
+  }
   for(const m of this.members){
    const tx=L.x+m.ox,ty=L.y+m.oy,mx=tx-m.x,my=ty-m.y,md=Math.hypot(mx,my);
-   if(md>.5){m.heading+=clamp(angDiff(m.heading,Math.atan2(my,mx)),-4*dt,4*dt);const st=Math.min(md,(this.running?52:17)*dt);m.x+=mx/md*st;m.y+=my/md*st}
+   if(md>.5){m.heading+=clamp(angDiff(m.heading,Math.atan2(my,mx)),-4*dt,4*dt);const st=Math.min(md,(this.running?54:17)*dt);m.x+=mx/md*st;m.y+=my/md*st}
    m.phase+=dt*(this.running?9:4);
   }
  }
@@ -299,11 +330,12 @@ class Critter{
   Object.assign(this,{heading:hash(o.seed,1)*6.28,v:0,state:'idle',t:1+hash(o.seed,2)*4,rng:(o.seed*7919)|0,phase:0,tx:o.x,ty:o.y,idleMin:2,idleVar:5,speed:12,runSpeed:40,flee:0},o);
  }
  rand(){this.rng=(Math.imul(this.rng,1664525)+1013904223)|0;return((this.rng>>>0)%100000)/100000}
- ok(x,y){const R=this.region;return x>R.x0&&x<R.x1&&y>R.y0&&y<R.y1&&!pointBlocked(x,y,5)&&!(this.avoid&&this.avoid(x,y))}
+ ok(x,y,veh=true){const R=this.region;return x>R.x0&&x<R.x1&&y>R.y0&&y<R.y1&&!pointBlocked(x,y,5)&&!(this.avoid&&this.avoid(x,y))&&!(veh&&this.flee&&vehDist(x,y)<10)}
  pick(){
   for(let k=0;k<10;k++){
    let x,y;
-   if(this.near&&this.rand()<.5){x=this.near.x+(this.rand()*2-1)*this.near.r;y=this.near.y+(this.rand()*2-1)*this.near.r}
+   if(this.roam){const a=this.rand()*6.283,d=80+this.rand()*this.roam;x=this.x+Math.cos(a)*d;y=this.y+Math.sin(a)*d}
+   else if(this.near&&this.rand()<.5){x=this.near.x+(this.rand()*2-1)*this.near.r;y=this.near.y+(this.rand()*2-1)*this.near.r}
    else{x=this.region.x0+this.rand()*(this.region.x1-this.region.x0);y=this.region.y0+this.rand()*(this.region.y1-this.region.y0)}
    if(this.ok(x,y)){this.tx=x;this.ty=y;this.state='walk';return}
   }
@@ -311,11 +343,11 @@ class Critter{
  }
  update(dt){
   this.phase+=dt;
-  const pd=Math.hypot(state.x-this.x,state.y-this.y);
-  if(this.flee&&pd<this.flee&&this.state!=='run'){
+  const pd=this.flee?vehDist(this.x,this.y):1e9;
+  if(this.flee&&(pd<this.flee&&this.state!=='run'||pd<8)){
    const away=Math.atan2(this.y-state.y,this.x-state.x);
    for(const off of [0,.6,-.6,1.2,-1.2,2]){
-    const d=70+this.rand()*70,x=this.x+Math.cos(away+off)*d,y=this.y+Math.sin(away+off)*d;
+    const d=(this.fleeMin||70)+this.rand()*(this.fleeVar||70),x=this.x+Math.cos(away+off)*d,y=this.y+Math.sin(away+off)*d;
     if(this.ok(x,y)){this.tx=x;this.ty=y;this.state='run';break}
    }
   }
@@ -325,8 +357,9 @@ class Critter{
   this.heading+=clamp(angDiff(this.heading,Math.atan2(dy,dx)),-(this.state==='run'?7:3.5)*dt,(this.state==='run'?7:3.5)*dt);
   this.v+=clamp(sp-this.v,-60*dt,60*dt);
   const nx=this.x+Math.cos(this.heading)*this.v*dt,ny=this.y+Math.sin(this.heading)*this.v*dt;
-  if(!this.ok(nx,ny)){this.state='idle';this.t=1+this.rand()*2;this.v=0;return}
+  if(!this.ok(nx,ny,false)){this.state='idle';this.t=1+this.rand()*2;this.v=0;return}
   this.x=nx;this.y=ny;
+  if(this.flee)pushOutOfVehicle(this,4);
  }
  draw(){
   if(this.kind==='chicken')drawChicken(ctx,this.x,this.y,this.heading,this.state==='idle'&&Math.sin(this.phase*7)>.3?1:0);
@@ -337,17 +370,17 @@ class Critter{
 const K=MAP.props.kennel;
 const yardRegion={x0:1285,y0:590,x1:1700,y1:785};
 const critters=[
- ...Array.from({length:7},(_,i)=>new Critter({kind:'chicken',seed:100+i,x:1400+i*30,y:640+(i%3)*30,region:yardRegion,speed:11,runSpeed:42,flee:55,idleMin:1,idleVar:3})),
+ ...Array.from({length:7},(_,i)=>new Critter({kind:'chicken',seed:100+i,x:1400+i*30,y:640+(i%3)*30,region:yardRegion,speed:11,runSpeed:42,flee:32,idleMin:1,idleVar:3})),
  new Critter({kind:'dog',seed:200,x:K.x-10,y:K.y+30,region:{x0:1062,y0:160,x1:1545,y1:450},near:{x:K.x+10,y:K.y+20,r:70},speed:22,runSpeed:44,idleMin:3,idleVar:8,
   avoid:(x,y)=>{const B=MAP.beds;return x>B.x-12&&x<B.x+B.w+12&&y>B.y-12&&y<B.y+B.h+12}}),
- new Critter({kind:'fox',seed:300,x:260,y:1200,region:{x0:205,y0:1065,x1:440,y1:1500},speed:34,runSpeed:78,flee:150,idleMin:3,idleVar:9}),
- new Critter({kind:'fox',seed:301,x:380,y:70,region:{x0:270,y0:14,x1:540,y1:128},speed:34,runSpeed:78,flee:150,idleMin:3,idleVar:9})
+ new Critter({kind:'fox',seed:300,x:260,y:1200,region:{x0:25,y0:25,x1:1935,y1:1575},roam:520,fleeMin:200,fleeVar:200,avoid:populated,speed:34,runSpeed:80,flee:110,idleMin:3,idleVar:9}),
+ new Critter({kind:'fox',seed:301,x:380,y:70,region:{x0:25,y0:25,x1:1935,y1:1575},roam:520,fleeMin:200,fleeVar:200,avoid:populated,speed:34,runSpeed:80,flee:110,idleMin:3,idleVar:9})
 ];
 const herd=Array.from({length:9},(_,i)=>new Cow(i));
 const deerGroups=[
- new DeerGroup([[268,78],[520,64],[780,92]],2,11),          // żyto na północ od pola
- new DeerGroup([[200,1210],[430,1290],[640,1190],[860,1260]],3,23), // ściernisko na południu
- new DeerGroup([[1045,1370],[1230,1290],[1420,1230]],2,37)  // zielone pole na południowym wschodzie
+ new DeerGroup([268,78],2,11),
+ new DeerGroup([200,1210],3,23),
+ new DeerGroup([1045,1370],2,37)
 ];
 
 const walkers=[
@@ -374,7 +407,6 @@ function updateLife(dt){
 function dynamicColliders(){
  const out=[];
  for(const w of walkers)if(!w.ghost)out.push({...w.obbShape,id:w.kind});
- for(const p of people)out.push({...p.shape,id:'person'});
  return out;
 }
 function lifeInfo(){return{time:RT.lifeT,vehicles:walkers.map(w=>({kind:w.kind,x:w.pos[0],y:w.pos[1],v:w.v,blocked:w.blocked,edge:w.from+'>'+w.to})),people:people.map(p=>({x:p.x,y:p.y})),critters:critters.map(c=>[c.kind,Math.round(c.x),Math.round(c.y),c.state]),animals:herd.length+critters.length+deerGroups.reduce((n,g)=>n+g.members.length,0),cows:herd.map(c=>({x:Math.round(c.x),y:Math.round(c.y),s:c.state})),deer:deerGroups.map(g=>g.members.map(m=>[Math.round(m.x),Math.round(m.y)]))}}

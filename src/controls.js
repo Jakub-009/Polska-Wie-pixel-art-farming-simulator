@@ -1,8 +1,8 @@
 // Klawiatura i przyciski dotykowe. Bez zależności od pętli gry.
-import {C,$,keys,state,RT,toast,DEBUG,active} from './core.js';
+import {C,$,keys,state,RT,toast,DEBUG,active,VIEW} from './core.js';
 import {toggleSound,updateSound,resumeSound} from './sound.js';
-import {toggleHeader} from './header.js';
-export function toggleTool(){if(!active())return;if(!state.headerOn){toast('BRAK HEDERA — H ZAKŁADA');return}state.tool=!state.tool;toast(state.tool?'HEDER OPUSZCZONY — MOŻESZ KOSIĆ':'HEDER PODNIESIONY')}
+import {toggleHeader,switchVehicle} from './header.js';
+export function toggleTool(){if(!active())return;if(state.vehicle!=='combine'){toast('TRAKTOR NIE MA HEDERA — V ZMIENIA POJAZD');return}if(!state.headerOn){toast('BRAK HEDERA — H ZAKŁADA');return}state.tool=!state.tool;toast(state.tool?'HEDER OPUSZCZONY — MOŻESZ KOSIĆ':'HEDER PODNIESIONY')}
 export function toggleTime(){state.rate=state.rate===1?5:state.rate===5?20:1;toast('PRĘDKOŚĆ CZASU '+state.rate+'×')}
 // Pauza dotyczy tylko trwającej rozgrywki (nie ekranu startowego ani końcowego).
 export function setPaused(p,silent){
@@ -10,14 +10,28 @@ export function setPaused(p,silent){
  state.paused=p;keys.clear();updateSound(false);
  if(!silent)toast(p?'PAUZA — P LUB KLIKNIĘCIE WZNAWIA':'WZNOWIONO');
 }
+// Zoom: poziomy oddalenia = mniejsza całkowita skala pikseli (obraz nadal ostry). Zmiana wywołuje przeliczenie rozmiaru w main.js.
+function zoom(d,cycle){
+ let z=VIEW.zoom+d;
+ if(cycle&&z>VIEW.maxZoom)z=0;
+ z=Math.max(0,Math.min(VIEW.maxZoom,z));
+ if(z===VIEW.zoom){if(VIEW.maxZoom===0)toast('ZA MAŁY EKRAN NA ODDALENIE');return}
+ VIEW.zoom=z;dispatchEvent(new Event('resize'));
+ toast(z?'ODDALENIE '+z+' (Z / + / −)':'WIDOK STANDARDOWY');
+}
 export function bindControls(reset){
+ C.addEventListener('wheel',e=>{e.preventDefault();zoom(e.deltaY>0?1:-1)},{passive:false});
  $('#start').addEventListener('click',()=>{if(state.done)reset();state.playing=true;state.paused=false;resumeSound();$('#overlay').classList.add('hidden');C.focus();if(RT.frame<90)toast('SPACJA — OPUŚĆ HEDER · ODKRYWAJ WIEŚ')});
  addEventListener('keydown',e=>{
   let k=e.key.toLowerCase();
   if([' ','arrowup','arrowdown','arrowleft','arrowright','f3'].includes(k))e.preventDefault();
-  if(e.repeat&&[' ','t','m','p','h','f3'].includes(k))return;
+  if(e.repeat&&[' ','t','m','p','h','v','f3'].includes(k))return;
   if(k===' '){toggleTool();return}
   if(k==='h'){toggleHeader();return}
+  if(k==='v'){switchVehicle();return}
+  if(k==='z'){zoom(e.shiftKey?-1:1,true);return}
+  if(k==='+'||k==='='){zoom(-1);return}
+  if(k==='-'||k==='_'){zoom(1);return}
   if(k==='t'){toggleTime();return}
   if(k==='m'){toggleSound();return}
   if(k==='f3'){DEBUG.on=!DEBUG.on;return}

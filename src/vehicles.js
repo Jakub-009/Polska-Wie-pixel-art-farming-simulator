@@ -1,6 +1,6 @@
 // Sylwetka kombajnu i wspólny renderer maszyn.
 // Główny kombajn i kombajn NPC korzystają z tego samego sprite'a i skali.
-import {ctx,rect,state,COMBINE_SCALE,RT,LIGHT} from './core.js';
+import {ctx,rect,state,COMBINE_SCALE,RT,LIGHT,camera} from './core.js';
 import {obb} from './geometry.js';
 const combine=document.createElement('canvas');combine.width=120;combine.height=132;let cg=combine.getContext('2d');cg.imageSmoothingEnabled=false;
 function drawCombine(){cg.clearRect(0,0,120,132);cg.save();cg.translate(60,69); // heading-up local coordinates
@@ -100,13 +100,42 @@ function drawHeaderDynamic2(s){ // statyczne zęby bębna na zdjętym hederze (p
  for(let i=-40;i<42;i+=8)rect(s,i,-56+54+1,3,2,'#b98b57');
  rect(s,-2,-66+54,5,2,'#71604b');
 }
-// Obrys kolizji kombajnu: kabina z przednią osią, tył z silnikiem i heder (obrócone prostokąty w świecie).
-function playerObbs(){
- const k=COMBINE_SCALE,a=state.angle;
- const [fx,fy]=worldOffset(0,-22.5*k),[rx,ry]=worldOffset(0,23*k),[hx,hy]=worldOffset(0,-54*k);
- const o=[obb(fx,fy,26*k,22.5*k,a),obb(rx,ry,22*k,23*k,a)];
- if(state.headerOn)o.push(obb(hx,hy,44*k,9*k,a));return o;
+// Traktor (pojazd testowy): ta sama skala i animacje co kombajn — przednie koła skręcają, bieżnik jedzie zgodnie z ruchem.
+function drawTractorAt(g,x,y,angle,steer,travel){
+ orientedShadow(g,x,y,angle,[[17,31.5,.5]],16);
+ drawRotated(g,x,y,angle,s=>{
+  const off=Math.round((((-travel)%5)+5)%5);
+  const wheel=(cx,cy,w,h,rot)=>{
+   s.save();s.translate(cx,cy);if(rot)s.rotate(rot);
+   rect(s,-w/2,-h/2,w,h,'#293532');rect(s,-w/2+1,-h/2+1,w-2,h-2,'#3c4640');
+   for(let t=-h/2+off-5;t<h/2;t+=5){if(t<-h/2||t+3>h/2)continue;rect(s,-w/2,t,3,2,'#757b6e');rect(s,w/2-3,t+1,3,2,'#676c61')}
+   s.restore();
+  };
+  for(const side of [-1,1]){wheel(side*14,-17,8,15,steer*.6);wheel(side*14,17,10,26,0)}
+  rect(s,-7,-31,14,30,'#98513b');rect(s,-6,-30,12,26,'#c26440');rect(s,-5,-30,10,3,'#d18851');
+  rect(s,-10,-3,20,26,'#98513b');rect(s,-9,-2,18,24,'#567d7a');rect(s,-7,0,14,16,'#9cb5a5');rect(s,-5,2,10,2,'#c5d2bc');
+  rect(s,-8,22,16,8,'#b4623f');rect(s,-2,29,4,3,'#444a44');
+  rect(s,-9,-26,2,3,'#edc46c');rect(s,7,-26,2,3,'#f4d275');
+ });
 }
-function drawHarvester(){drawMachineAt(ctx,state.x,state.y,state.angle,state.steer,RT.wheelTravel,state.tool&&state.headerOn,state.headerOn)}
+function offAt(x,y,a,lx,ly){return [x+Math.cos(a)*lx+Math.sin(a)*(-ly),y+Math.sin(a)*lx+Math.cos(a)*ly]}
+// Obrys kolizji dowolnego pojazdu w danym położeniu.
+function vehObbs(kind,x,y,a,headerOn){
+ if(kind==='tractor')return [obb(x,y,18,31.5,a)];
+ const k=COMBINE_SCALE;
+ const [fx,fy]=offAt(x,y,a,0,-22.5*k),[rx,ry]=offAt(x,y,a,0,23*k),[hx,hy]=offAt(x,y,a,0,-54*k);
+ const o=[obb(fx,fy,26*k,22.5*k,a),obb(rx,ry,22*k,23*k,a)];
+ if(headerOn)o.push(obb(hx,hy,44*k,9*k,a));return o;
+}
+function playerObbs(){return vehObbs(state.vehicle,state.x,state.y,state.angle,state.headerOn)}
+function otherObbs(){const o=state.other;return vehObbs(o.kind,o.x,o.y,o.angle,state.headerOn)}
+function drawHarvester(){
+ if(state.vehicle==='tractor')drawTractorAt(ctx,state.x,state.y,state.angle,state.steer,RT.wheelTravel);
+ else drawMachineAt(ctx,state.x,state.y,state.angle,state.steer,RT.wheelTravel,state.tool&&state.headerOn,state.headerOn)
+}
+function drawOtherVehicle(){
+ const o=state.other;
+ if(o.kind==='tractor')drawTractorAt(ctx,o.x,o.y,o.angle,0,0);else drawMachineAt(ctx,o.x,o.y,o.angle,0,0,false,state.headerOn);
+}
 
-export {worldOffset,drawMachineAt,drawHarvester,drawParkedHeader,playerObbs,orientedShadow,drawRotated};
+export {drawOtherVehicle,otherObbs,vehObbs,drawTractorAt,worldOffset,drawMachineAt,drawHarvester,drawParkedHeader,playerObbs,orientedShadow,drawRotated};

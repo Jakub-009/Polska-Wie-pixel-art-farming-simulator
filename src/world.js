@@ -242,11 +242,7 @@ function fence(f){
 function paintObjects(){
  const P=MAP.props;
  for(const b of MAP.buildings){if(b.type==='house')house(b);else if(b.type==='barn')barn(b);else wiata(b)}
- for(let i=0;i<P.pallets.n;i++){rect(dl,P.pallets.x+i*11,P.pallets.y,8,14,'#a5875f');rect(dl,P.pallets.x+3+i*11,P.pallets.y+2,2,11,'#c2ab80')}
- for(let i=0;i<P.barrels.n;i++){rect(dl,P.barrels.x+i*15,P.barrels.y,11,17,['#64757a','#72846d','#9a664e'][i]);rect(dl,P.barrels.x+1+i*15,P.barrels.y+1,10,3,'#c3bda3')}
- parkedTractor(P.tractor.x,P.tractor.y);
  for(let i=0;i<5;i++){rect(dl,P.laundry.x+i*11,P.laundry.y,7,5,['#d6c6a2','#d9e6d4','#7396b0','#b86156','#d7d1b7'][i]);rect(dl,P.laundry.x+1+i*11,P.laundry.y+1,2,2,'#e9e3ce')}
- const tr=P.trough;rect(dl,tr.x,tr.y,tr.w,tr.h,'#867960');rect(dl,tr.x+3,tr.y+2,tr.w-6,tr.h-5,'#72999a');
  const k=P.kennel;rect(dl,k.x+4,k.y+4,k.w,k.h,'#42564255');rect(dl,k.x,k.y,k.w,k.h,'#6f4f38');rect(dl,k.x+1,k.y+1,k.w-2,k.h-2,'#a5714f');rect(dl,k.x+k.w/2-1,k.y+1,2,k.h-2,'#7d5238');rect(dl,k.x+k.w-4,k.y+k.h-1,5,3,'#2f2a26');
  for(const p of P.poles)pole(p.x,p.y,p.nest);
  // Przewody: dwa tory między końcami poprzeczek, z lekkim zwisem; warstwa nadziemna.

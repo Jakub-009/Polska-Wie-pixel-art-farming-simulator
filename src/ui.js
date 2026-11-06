@@ -7,7 +7,7 @@ function hud(){
  $('#time').textContent=`${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`;
  $('#rate').textContent=state.rate+'×';
  $('#speed').textContent=Math.round(Math.abs(state.v)/PX_PER_M*3.6);
- $('#toolstatus').textContent=!state.headerOn?'BEZ HEDERA':state.tool?'HEDER ↓ WŁ.':'HEDER ↑ WYŁ.';
+ $('#toolstatus').textContent=state.vehicle==='tractor'?'TRAKTOR (TEST)':!state.headerOn?'BEZ HEDERA':state.tool?'HEDER ↓ WŁ.':'HEDER ↑ WYŁ.';
  $('#tanktext').textContent=displayNumber(state.tank*TANK_T,2)+' / 3,0 t';
  $('#tankbar').style.width=state.tank*100+'%';
  $('#progress').textContent=displayNumber(state.cut/N*100,1)+'%';

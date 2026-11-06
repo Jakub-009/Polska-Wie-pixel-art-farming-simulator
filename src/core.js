@@ -1,9 +1,9 @@
 // Wspólne jednostki, stan symulacji i małe funkcje rysowania.
 // 0.4.0: stały krok czasowy, pauza jako osobny stan, tryb debug, liczniki czasu zamiast modulo klatek.
-export const VERSION='0.4.3';
+export const VERSION='0.4.4';
 export const C=document.querySelector('#game');
 export const ctx=C.getContext('2d',{alpha:false});
-export const VIEW={w:640,h:360,scale:3};
+export const VIEW={w:640,h:360,scale:3,zoom:0,maxZoom:0};
 export const $=s=>document.querySelector(s);
 export const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 export const lerp=(a,b,t)=>a+(b-a)*t;
@@ -20,7 +20,7 @@ export function shadow(g,x,y,w,h,height=45){const dx=LIGHT.x*height,dy=LIGHT.y*h
 export const keys=new Set();
 // Start: podwórze gospodarstwa, kombajn skierowany na wyjazd (zachód), heder założony.
 export const START={x:1380,y:515,angle:-Math.PI/2};
-export const state={x:START.x,y:START.y,angle:START.angle,v:0,steer:0,tool:false,headerOn:true,parked:null,tank:0,time:16*60+35,
+export const state={vehicle:'combine',other:{kind:'tractor',x:1295,y:622,angle:0},x:START.x,y:START.y,angle:START.angle,v:0,steer:0,tool:false,headerOn:true,parked:null,tank:0,time:16*60+35,
   elapsed:0,rate:1,work:0,done:false,playing:false,paused:false,mute:true,cut:0};
 // Gra „biegnie”, gdy rozpoczęta i niezapauzowana.
 export const active=()=>state.playing&&!state.paused;
@@ -31,6 +31,8 @@ export const DEBUG={on:false,fps:0,contacts:0};
 export const fx=[];
 // Jeden przelicznik px/metr na całą mapę i pojazdy.
 export const PX_PER_M=12,COMBINE_SCALE=1,MAXSPEED=20,ROAD_SPEED=34,REVERSE_SPEED=12;
+// Parametry jazdy: L = rozstaw osi (px) w modelu rowerowym; prędkości w px/s (12 px = 1 m).
+export const VEH={combine:{L:38,work:MAXSPEED,road:ROAD_SPEED,rev:REVERSE_SPEED,acc:9,brake:23},tractor:{L:30,work:56,road:62,rev:22,acc:17,brake:34}};
 export const HEADER_HALF=38*COMBINE_SCALE,HEADER_MIN=49*COMBINE_SCALE,HEADER_MAX=65*COMBINE_SCALE;
 export const FIELD_HA=(FLD.w/PX_PER_M)*(FLD.h/PX_PER_M)/10000;
 export const YIELD_T_HA=5.2,TANK_T=3.0,FINISH_SHARE=.992;

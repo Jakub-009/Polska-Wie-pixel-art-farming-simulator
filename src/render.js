@@ -2,7 +2,7 @@
 // 0.4.0: rysowanie tylko widocznego wycinka warstw, dachy i korony nad pojazdami, nakładka debug (F3).
 import {ctx,VIEW,clamp,rect,line,state,camera,fx,FLD,DEBUG,RT} from './core.js';
 import {ground,field,tracks,decorLow,decorHigh} from './world.js';
-import {drawHarvester,drawParkedHeader,playerObbs} from './vehicles.js';
+import {drawHarvester,drawParkedHeader,playerObbs,drawOtherVehicle,otherObbs} from './vehicles.js';
 import {drawLivingWorld,drawVillageLife,drawCanopyLife,dynamicColliders} from './life.js';
 import {MAP} from './map.js';
 import {obbCorners} from './geometry.js';
@@ -22,11 +22,13 @@ function drawDebug(){
  for(const c of MAP.colliders)outline(c,'#ff4040');
  for(const c of dynamicColliders())outline(c,'#ff40ff');
  for(const o of playerObbs())outline(o,'#ffe040');
+ for(const o of otherObbs())outline(o,'#ff40ff');
  ctx.strokeStyle='#40e0ff';ctx.lineWidth=1;
  for(const e of MAP.roads.edges){const A=MAP.nodes[e.a],B=MAP.nodes[e.b];ctx.beginPath();ctx.moveTo(A[0],A[1]);ctx.lineTo(B[0],B[1]);ctx.stroke()}
 }
 function drawWorld(){
  ctx.save();ctx.translate(-Math.floor(camera.x),-Math.floor(camera.y));
+ ctx.fillStyle='#3f5a3c';ctx.fillRect(Math.floor(camera.x),Math.floor(camera.y),VIEW.w+1,VIEW.h+1);
  blit(ground);ctx.drawImage(field,FLD.x,FLD.y);
  line(ctx,FLD.x,FLD.y,FLD.x+FLD.w,FLD.y,'#c8b67b');
  line(ctx,FLD.x,FLD.y+FLD.h,FLD.x+FLD.w,FLD.y+FLD.h,'#857b57');
@@ -34,7 +36,7 @@ function drawWorld(){
  line(ctx,FLD.x+FLD.w,FLD.y,FLD.x+FLD.w,FLD.y+FLD.h,'#a8996a');
  blit(tracks);blit(decorLow);
  if(state.parked)drawParkedHeader(ctx,state.parked.x,state.parked.y,state.parked.angle);
- drawLivingWorld();drawVillageLife();drawParticles();drawHarvester();
+ drawOtherVehicle();drawLivingWorld();drawVillageLife();drawParticles();drawHarvester();
  blit(decorHigh);drawCanopyLife();
  if(DEBUG.on)drawDebug();
  ctx.restore();
