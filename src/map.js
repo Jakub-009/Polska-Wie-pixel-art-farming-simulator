@@ -7,11 +7,12 @@ import {distToSegment,obbCircle} from './geometry.js';
 // ── Skala drzew: jeden mnożnik na całą mapę (patrz plan 0.4.1 — korekta skali) ──
 export const TREE_SCALE=1.6;
 
-// ── Graf dróg (0.6.0) ──
-// main = droga główna na dole (dwa pasy, asfalt, przerywana linia); side = droga pionowa przy podwórku (asfalt, chodnik, latarnie, kończy się
-// pętlą z przystankiem); dirt = drogi polne; drive = wjazd na podwórze. lane = odsunięcie osi pasa od osi jezdni.
-export const NODES={bt:[945,70],jD:[945,501],jX:[945,962],jM:[945,1740],mW:[-35,1740],eS:[2150,1740],mE:[2335,1740],
- nW:[-35,962],dE:[1050,501],gN:[1760,150],tN:[1760,70],eN:[2150,70],nE2:[2335,70]};
+// ── Graf dróg (0.6.1) ──
+// main = droga główna na dole (dwa pasy, asfalt, przerywana oś, chodnik po stronie północnej, przystanek PKS, przejście dla pieszych);
+// side = wiejska droga pionowa przy podwórku (asfalt bez oznakowania, pobocza, rowy; wychodzi za mapę); dirt = drogi polne; drive = wjazd na podwórze.
+// lane = odsunięcie osi pasa od osi jezdni. Węzły skrajne leżą daleko poza mapą (pojazdy znikają i wracają).
+export const NODES={bt:[945,-110],jD:[945,501],jX:[945,962],jM:[945,1740],mW:[-110,1740],eS:[2150,1740],mE:[2410,1740],
+ nW:[-110,962],dE:[1050,501],gN:[1760,150],tN:[1760,70],eN:[2150,70],nE2:[2410,70]};
 export const EDGES=[
  {a:'bt',b:'jD',w:58,kind:'side',lane:14},{a:'jD',b:'jX',w:58,kind:'side',lane:14},{a:'jX',b:'jM',w:58,kind:'side',lane:14},
  {a:'mW',b:'jM',w:76,kind:'main',lane:19},{a:'jM',b:'eS',w:76,kind:'main',lane:19},{a:'eS',b:'mE',w:76,kind:'main',lane:19},
@@ -24,20 +25,25 @@ export const ROADS={nodes:NODES,edges:EDGES,
  neighbours(k){return EDGES.filter(e=>e.a===k||e.b===k).map(e=>({edge:e,to:e.a===k?e.b:e.a}))}};
 const segOf=e=>({x1:NODES[e.a][0],y1:NODES[e.a][1],x2:NODES[e.b][0],y2:NODES[e.b][1],w:e.w,kind:e.kind});
 const SEG=EDGES.map(segOf);
-// Pętla zawrotna na końcu drogi bocznej (przystanek).
-export const BULB={x:945,y:70,r:46};
 // Odległość punktu od krawędzi jezdni (ujemna = na jezdni). kinds: opcjonalna lista rodzajów dróg.
-export function roadClearance(x,y,kinds){let m=Math.hypot(x-BULB.x,y-BULB.y)-BULB.r;for(const s of SEG)if(!kinds||kinds.includes(s.kind))m=Math.min(m,distToSegment(x,y,s.x1,s.y1,s.x2,s.y2)-s.w/2);return m}
-// Chodnik po wschodniej stronie drogi bocznej (od pętli do głównej drogi), latarnie na jego zewnętrznej krawędzi.
-export const SIDEWALK={x0:977,x1:1001,y0:106,y1:1702};
-export const LAMPS=[];for(let y=150;y<=1650;y+=100)if(Math.abs(y-501)>60)LAMPS.push({x:997,y});
-LAMPS.push({x:1028,y:44});
-// Przystanek PKS na końcu drogi: wiata, ławka, słupek z tabliczką.
-export const BUSSTOP={x:1004,y:52,w:16,h:38,sign:{x:997,y:100}};
-// Przejście dla pieszych na drodze bocznej tuż przy skrzyżowaniu z główną.
-export const ZEBRA={x:945,y:1690,w:58,h:18};
-// Znaki „STOP” na dojazdach dróg polnych do asfaltu.
-export const SIGNS=[{x:2122,y:1694},{x:904,y:992}];
+export function roadClearance(x,y,kinds){let m=1e9;for(const s of SEG)if(!kinds||kinds.includes(s.kind))m=Math.min(m,distToSegment(x,y,s.x1,s.y1,s.x2,s.y2)-s.w/2);return m}
+// Chodnik po północnej stronie drogi głównej (przerwy: wylot drogi bocznej i polnej).
+export const MAINWALK={y0:1675,y1:1699,gaps:[[912,978],[2124,2176]]};
+// Przystanki PKS (autobus zatrzymuje się środkiem w x): zachodni kierunek — wiata na chodniku; wschodni — słupek i ławka na południowym poboczu.
+export const BUSSTOPS=[{id:'bsW',x:1046,dir:-1},{id:'bsE',x:858,dir:1}];
+export const BUSSHELTER={x:1022,y:1677,w:48,h:14,sign:{x:1082,y:1694},signS:{x:850,y:1794},benchS:{x:872,y:1796,w:16,h:5}};
+// Przejście dla pieszych przez drogę główną obok przystanku (paski wzdłuż jazdy, rozmieszczone na szerokości jezdni).
+export const ZEBRA={x:1124,y:1740,w:20,h:76};
+// Latarnie wiejskie na drewnianych słupach: rzadko przy drodze bocznej (wysięgnik na zachód), co ~190 px przy głównej (wysięgnik na południe).
+export const LAMPS=[];
+for(let y=250;y<=1550;y+=260)if(Math.abs(y-501)>70)LAMPS.push({x:992,y,dir:'W'});
+for(let x=140;x<=2260;x+=190){if((x>880&&x<1120)||Math.abs(x-2150)<60)continue;LAMPS.push({x,y:1678,dir:'S'})}
+LAMPS.push({x:1000,y:1678,dir:'S'});
+// Znaki: STOP na dojazdach dróg polnych, ostrzegawczy „zwierzyna”.
+export const SIGNS=[{x:2118,y:1696,kind:'stop'},{x:896,y:992,kind:'stop'},{x:998,y:1500,kind:'deer'},{x:1000,y:420,kind:'deer'}];
+// Kapliczka przydrożna przy skrzyżowaniu, tablica z nazwą wsi na wjazdach.
+export const SHRINE={x:892,y:1650};
+export const VILLAGE=[{x:330,y:1804},{x:1780,y:1804}];
 
 // ── Gospodarstwo wg szkicu (1 px szkicu ≈ 1,1 px świata; 12 px = 1 m) ──
 // Płot brązowy dookoła; wjazd od zachodu (114 px) między ogrodem a wiatą, brama od północy na drogę na drugie pole.
@@ -89,9 +95,11 @@ export const PUDDLES=[[1450,650,34,18,1],[1335,725,26,13,0],[1625,610,30,15,1],[
  [330,962,24,9,1],[640,964,20,8,0],[820,958,20,9,1],[1500,70,22,9,1],[1950,72,22,9,0],[2150,420,18,9,1],[2150,1020,18,8,0],[2152,1500,20,9,1],[1760,110,18,8,1],
  [880,160,16,6,1],[1010,1110,15,6,0]];
 export const puddleAt=(x,y)=>PUDDLES.find(([px,py,rx,ry])=>((x-px)/(rx+4))**2+((y-py)/(ry+3))**2<1)||null;
-// Linia energetyczna wzdłuż drogi bocznej (za chodnikiem), co ~150 px; omija wjazd i skrzyżowania.
-{const ys=[190,340,640,790,1090,1240,1390,1540,1650];
- ys.forEach((y,i)=>{if(roadClearance(1012,y)>=8)PROPS.poles.push({x:1012,y,nest:y===340})})}
+// Linie energetyczne na drewnianych słupach: wzdłuż drogi bocznej (z gniazdem bociana) i wzdłuż głównej (północne pobocze).
+PROPS.lines=[[],[]];
+{const ys=[160,330,500,640,800,960,1100,1250,1400,1550,1650];
+ for(const y of ys){if(Math.abs(y-501)<40||Math.abs(y-962)<30)continue;const p={x:1014,y,nest:y===330};PROPS.poles.push(p);PROPS.lines[0].push(p)}}
+{for(let x=160;x<=2260;x+=150){if((x>900&&x<1130)||Math.abs(x-2150)<60)continue;const p={x,y:1654};PROPS.poles.push(p);PROPS.lines[1].push(p)}}
 // Płoty: style 'brown' (obwód gospodarstwa) i 'inner' (ogródek). Odcinki poziome/pionowe.
 const FX0=FARM.x,FY0=FARM.y,FX1=FARM.x+FARM.w,FY1=FARM.y+FARM.h;
 export const FENCES=[
@@ -110,11 +118,13 @@ function addRect(x,y,w,h,id){colliders.push({shape:'obb',x:x+w/2,y:y+h/2,hw:w/2,
 function addCircle(x,y,r,id){colliders.push({shape:'circle',x,y,r,id,br:r})}
 for(const b of BUILDINGS)addRect(b.x,b.y,b.w+2,b.h+10,b.id);
 addRect(PROPS.kennel.x,PROPS.kennel.y,PROPS.kennel.w,PROPS.kennel.h,'kennel');
-for(const p of PROPS.poles)addCircle(p.x,p.y+11,5,'pole');
+for(const p of PROPS.poles)addCircle(p.x,p.y+11,4,'pole');
 for(const s of SILOS)addCircle(s.x,s.y,s.r,s.id);
 for(const l of LAMPS)addCircle(l.x,l.y,3,'lamp');
 for(const q of SIGNS)addCircle(q.x,q.y,3,'sign');
-addRect(BUSSTOP.x,BUSSTOP.y,BUSSTOP.w,BUSSTOP.h,'busstop');addCircle(BUSSTOP.sign.x,BUSSTOP.sign.y,3,'sign');
+addRect(BUSSHELTER.x,BUSSHELTER.y,BUSSHELTER.w,BUSSHELTER.h,'busstop');addCircle(BUSSHELTER.sign.x,BUSSHELTER.sign.y,3,'sign');addCircle(BUSSHELTER.signS.x,BUSSHELTER.signS.y,3,'sign');
+addRect(BUSSHELTER.benchS.x,BUSSHELTER.benchS.y,BUSSHELTER.benchS.w,BUSSHELTER.benchS.h,'bench');
+addCircle(SHRINE.x,SHRINE.y,8,'shrine');for(const v of VILLAGE)addCircle(v.x,v.y,3,'sign');
 addRect(PROPS.sign.x+8,PROPS.sign.y+10,3,19,'sign');
 for(const f of FENCES){
  if(f.y1===f.y2)addRect(Math.min(f.x1,f.x2)-3,f.y1-3,Math.abs(f.x2-f.x1)+7,7,'fence');
@@ -181,7 +191,7 @@ for(let i=0;i<70;i++){const x=FLD.x+4+i*9.2+(hash(i,88)*4|0),y=146+(hash(i,89)*1
 for(let i=0;i<91;i++){const x=1080+hash(i,104)*790,y=1020+hash(i,105)*560;if(i%5===0)addTree(x,y,12+(i%4)*2,i%3?'round':'pine',.7);else if(i%3!==0)addShrub(x,y,6+(i%5),i+104)}
 for(let i=0;i<55;i++){const x=16+hash(i,140)*185,y=1050+hash(i,141)*530;if(i%3===0)addTree(x,y,13+(i%5)*2,i%4===0?'pine':'round',.7);else addShrub(x,y,7+(i%5),i+140)}
 // Pobocza drogi głównej i drogi polnej na wschodzie (0.6.0)
-for(let i=0;i<64;i++){const x=10+i*36+(hash(i,150)*18|0);if(hash(i,151)<.45)addShrub(x,1696+(hash(i,152)*8|0),6+(i%3),i+150,{belt:true});if(hash(i,153)<.5)addShrub(x,1792+(hash(i,154)*30|0),6+(i%4),i+160,{belt:true})}
+for(let i=0;i<64;i++){const x=10+i*36+(hash(i,150)*18|0);if(hash(i,151)<.45)addShrub(x,1640+(hash(i,152)*14|0),6+(i%3),i+150,{belt:true});if(hash(i,153)<.5)addShrub(x,1806+(hash(i,154)*26|0),6+(i%4),i+160,{belt:true})}
 for(let i=0;i<30;i++){const x=40+i*76+(hash(i,170)*30|0);addTree(x,1812+(hash(i,171)*16|0),13+(i%3)*2,i%3?'round':'pine',.8,{belt:true})}
 for(let i=0;i<44;i++){const y=110+i*36+(hash(i,180)*12|0),x=hash(i,181)<.5?2118:2182;if(hash(i,182)<.4)addShrub(x,y,6+(i%3),i+180,{belt:true})}
 for(let i=0;i<14;i++)addTree(1925+(i%2)*3,200+i*62+(hash(i,190)*20|0),14+(i%3)*2,i%3===0?'pine':'round',.8,{belt:true});
@@ -202,4 +212,4 @@ export function pointBlocked(x,y,r=6){
  return false;
 }
 
-export const MAP={sidewalk:SIDEWALK,lamps:LAMPS,busstop:BUSSTOP,zebra:ZEBRA,signs:SIGNS,bulb:BULB,pigpen:PIGPEN,nodes:NODES,roads:ROADS,fields:FIELDS,woods:WOODS,farm:FARM,garden:GARDEN,beds:BEDS,pasture:PASTURE,buildings:BUILDINGS,props:PROPS,fences:FENCES,silos:SILOS,pit:PIT,puddles:PUDDLES,trees,shrubs,bales,colliders};
+export const MAP={mainwalk:MAINWALK,busstops:BUSSTOPS,shelter:BUSSHELTER,shrine:SHRINE,village:VILLAGE,lamps:LAMPS,zebra:ZEBRA,signs:SIGNS,pigpen:PIGPEN,nodes:NODES,roads:ROADS,fields:FIELDS,woods:WOODS,farm:FARM,garden:GARDEN,beds:BEDS,pasture:PASTURE,buildings:BUILDINGS,props:PROPS,fences:FENCES,silos:SILOS,pit:PIT,puddles:PUDDLES,trees,shrubs,bales,colliders};

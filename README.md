@@ -103,6 +103,12 @@ Potem otwórz `http://localhost:8000/`. Alternatywnie użyj rozszerzenia Live Se
 
 0.4.3: przebudowa gospodarstwa (obwodnica, plac manewrowy, test przejezdności). Zbiornik (3 t) nie zapełnia się przy polu 0,28 ha — do rozwiązania razem z rozładunkiem (0.5).
 
+## 0.6.1
+- Droga dolna jest główną (największy ruch: auta, radiowóz, autobus PKS, rowerzysta): chodnik po północnej stronie, przystanek PKS przy skrzyżowaniu (wiata na chodniku, słupek i ławka po drugiej stronie), przejście dla pieszych, wiejskie latarnie na drewnianych słupach, tylko przerywana oś, łaty i pęknięcia na asfalcie, rów po południowej stronie.
+- Droga pionowa jest wiejska: asfalt bez oznakowania, pobocza z żwiru, rowy z przepustami, rzadkie latarnie, mały ruch, piesi na poboczu. Bez pętli i przystanku — wychodzi za mapę.
+- Wszystkie słupy energetyczne są drewniane (zastrzały, izolatory); linie wzdłuż obu dróg, bocian na gnieździe przy drodze bocznej.
+- Dodatki: kapliczka przydrożna, tablica „LIPY” na wjazdach, znaki ostrzegawcze „zwierzyna”, gęsi na trawie, rowerzyści, autobus kursuje z przerwami.
+
 ## 0.6.0
 - Mapa powiększona do 2300×1840 (wschodni pas z polami i drogą polną, południowy pas z drogą główną).
 - Nowy układ dróg: główna dwupasmowa asfaltowa na dole (przerywana linia, linie krawędziowe), pionowa boczna asfaltowa z chodnikiem, latarniami, przejściem dla pieszych i pętlą z przystankiem PKS; drogi polne z kolejami, znaki STOP na dojazdach, utwardzony wjazd na podwórze.

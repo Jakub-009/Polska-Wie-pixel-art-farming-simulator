@@ -1,6 +1,6 @@
 // Wspólne jednostki, stan symulacji i małe funkcje rysowania.
 // 0.4.0: stały krok czasowy, pauza jako osobny stan, tryb debug, liczniki czasu zamiast modulo klatek.
-export const VERSION='0.6.0';
+export const VERSION='0.6.1';
 export const C=document.querySelector('#game');
 export const ctx=C.getContext('2d',{alpha:false});
 export const VIEW={w:640,h:360,scale:3,zoom:0,maxZoom:0};

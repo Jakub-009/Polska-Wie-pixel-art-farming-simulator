@@ -117,6 +117,26 @@ function busTop(g,x,y,heading=0){
   rect(s,-12,-47,4,2,'#ecddb6');rect(s,8,-47,4,2,'#e8d4a8');rect(s,-12,45,4,2,'#c2362b');rect(s,8,45,4,2,'#c2362b');
  });
 }
+function bikeTop(g,x,y,heading=0,phase=0){
+ if(!nearCam(x,y,30))return;
+ orientedShadow(g,x,y,heading,[[2,8,0]],5,'#37474355');
+ drawRotated(g,x,y,heading,s=>{
+  rect(s,-1,-9,2,18,'#2a2f2d');rect(s,-2,-9,4,3,'#555b57');rect(s,-2,7,4,2,'#555b57');   // koła
+  rect(s,-1,-2,2,6,'#8a3b2e');                                                             // rama
+  rect(s,-4,-5,8,2,'#2f3431');                                                              // kierownica
+  rect(s,-3,-3,7,7,'#4f6a8a');rect(s,-2,-4,5,5,'#4a5a72');rect(s,-2,-8,4,4,'#d6a77f');rect(s,-2,-9,4,2,'#5a432f');
+  rect(s,-4+Math.round(Math.sin(phase*8)),2,2,2,'#26211d');rect(s,3-Math.round(Math.sin(phase*8)),3,2,2,'#26211d');
+ });
+}
+function drawGoose(g,x,y,heading,phase,idle){
+ if(!nearCam(x,y,20))return;
+ blob(g,x,y,5,3,2);
+ drawRotated(g,x,y,heading,s=>{
+  rect(s,-5,-3,9,6,'#cfcbbc');rect(s,-4,-3,8,5,'#f4f2ea');rect(s,-5,-1,2,3,'#d9d6c8');
+  rect(s,4,-1,3,2,'#f4f2ea');rect(s,6,-2,2,3,'#f4f2ea');rect(s,8,-1,3,2,'#e08a2a');
+  if(!idle){const st=Math.round(Math.sin(phase*7));rect(s,-1+st,3,1,2,'#d2862b');rect(s,-1-st,-5,1,2,'#d2862b')}
+ });
+}
 function drawPig(g,x,y,heading,phase,idle){
  if(!nearCam(x,y,24))return;
  blob(g,x,y,8,4,3);
@@ -146,7 +166,8 @@ function birds(g,t){
 const body=k=>{const [hw,hh,cy]=VEHICLES[k].npcBody;return{hw,hh,cy}};
 const SPECS={
  car:{speed:42,...body('car'),lane:12,allow:['main','side']},
- bus:{speed:34,...body('bus'),lane:14,allow:['main','side']},
+ bus:{speed:34,...body('bus'),lane:14,allow:['main']},
+ bike:{speed:15,hw:3,hh:9,cy:0,lane:31,rider:true,allow:['main','side']},
  tractor:{speed:22,...body('tractor'),lane:16,allow:['dirt','side','main']},
  combine:{speed:14,...body('combine'),lane:16,allow:['dirt','side','main']}
 };
@@ -170,7 +191,7 @@ class Walker{
  }
  place(){
   const A=ROADS.nodes[this.from],cx=A[0]+this.dx*this.s,cy=A[1]+this.dy*this.s;
-  const h=this.heading,l=this.edge.lane!=null?this.edge.lane:this.spec.lane;
+  const h=this.heading,l=this.spec.rider?Math.min(this.spec.lane,this.edge.w/2-6):this.edge.lane!=null?this.edge.lane:this.spec.lane;
   this.pos=[cx+Math.cos(h)*l,cy+Math.sin(h)*l];
   const back=this.spec.cy;
   this.obbShape=obb(this.pos[0]-Math.sin(h)*back,this.pos[1]+Math.cos(h)*back,this.spec.hw,this.spec.hh,h);
@@ -195,7 +216,16 @@ class Walker{
    if(!this.ghost&&this.blockT>5){this.ghost=true;this.ghostT=0}
    if(this.ghost){this.ghostT+=dt;let touch=false;for(const o of mine)if(collide(this.obbShape,o)||collide(pr,o)){touch=true;break}
     if(!touch&&this.ghostT>2)this.ghost=false}
-   const target=blocked?0:this.spec.speed;
+   let target=blocked?0:this.spec.speed;
+   // autobus: zwalnia przed przystankiem własnego kierunku jazdy i stoi na nim chwilę
+   if(this.kind==='bus'&&this.edge.kind==='main'){
+    for(const st of MAP.busstops){
+     if(Math.sign(this.dx)!==st.dir)continue;
+     if(Math.abs(this.pos[0]-st.x)>200&&this.served===st.id)this.served=null;
+     const dist=(st.x-this.pos[0])*this.dx;
+     if(this.served!==st.id&&dist>-2&&dist<90){target=Math.min(target,Math.max(5,dist*.7));if(dist<4){this.dwell=6;this.served=st.id;this.v=0}}
+    }
+   }
    this.v+=clamp(target-this.v,-70*dt,22*dt);
   }
   this.s+=this.v*dt;this.travel+=this.v*dt;
@@ -212,14 +242,18 @@ class Walker{
   const forward=opts.filter(n=>n.to!==prev);
   const outside=!inWorld(ROADS.nodes[node]);
   let next;
-  if(forward.length)next=forward[Math.floor(hash(this.turns++,this.seed,node.length)*forward.length)];
+  if(forward.length){ // ważone losowanie: główna najchętniej, boczna rzadko, polna sporadycznie (dla aut)
+   const wk={main:1,side:.3,dirt:.45,drive:.1},wt=forward.map(n=>this.kind==='tractor'||this.kind==='combine'?1:wk[n.edge.kind]||1),tot=wt.reduce((a,b)=>a+b,0);
+   let r=hash(this.turns++,this.seed,node.length)*tot,k=0;while(k<forward.length-1&&r>=wt[k]){r-=wt[k];k++}
+   next=forward[k];
+  }
   else next=opts.find(n=>n.to===prev); // ślepy zaułek: zawracanie
   if(!next){this.s=this.len;return}
   const overflow=this.s-this.len;
   this.setEdge(node,next.to);this.s=Math.max(0,overflow);
   if(!forward.length){
-   if(outside)this.heading=this.dirHeading; // poza mapą — zawracamy niewidocznie
-   else this.dwell=this.kind==='bus'?7:1.4;  // autobus czeka na przystanku; inni zawracają powoli
+   if(outside){this.heading=this.dirHeading;this.dwell=this.kind==='bus'?18+hash(this.turns,this.seed,5)*30:2+hash(this.turns,this.seed,6)*16}   // poza mapą — zawracamy niewidocznie; autobus „kursuje” z przerwą
+   else this.dwell=1.4;                      // na podwórzu — wolne zawracanie
   }
  }
  draw(){
@@ -227,6 +261,7 @@ class Walker{
   if(this.cart&&nearCam(this.cart.x,this.cart.y,110))drawCart(ctx,this.cart,this.travel);
   if(this.kind==='car')carTop(ctx,x,y,this.color,this.heading,this.police);
   else if(this.kind==='bus')busTop(ctx,x,y,this.heading);
+  else if(this.kind==='bike')bikeTop(ctx,x,y,this.heading,this.travel*.12);
   else if(this.kind==='tractor'){if(nearCam(x,y,80))drawTractorAt(ctx,x,y,this.heading,this.steer*.5,this.travel)}
   else if(nearCam(x,y,95))drawMachineAt(ctx,x,y,this.heading,this.steer*.5,this.travel,false,false);
  }
@@ -436,6 +471,7 @@ class Critter{
  }
  draw(){
   if(this.kind==='chicken')drawChicken(ctx,this.x,this.y,this.heading,this.state==='idle'&&Math.sin(this.phase*7)>.3?1:0);
+  else if(this.kind==='goose')drawGoose(ctx,this.x,this.y,this.heading,this.phase,this.state==='idle');
   else if(this.kind==='pig')drawPig(ctx,this.x,this.y,this.heading,this.phase,this.state==='idle');
   else if(this.kind==='dog')drawDog(ctx,this.x,this.y,this.heading,this.phase);
   else drawFox(ctx,this.x,this.y,this.heading,this.phase,this.state==='run');
@@ -450,6 +486,7 @@ const critters=[
 ];
 // Wybieg przy chlewiku: trzy świnie, które łażą po wybiegu i leżą przy korycie.
 const pigRegion={x0:PIGPEN.x0+8,y0:PIGPEN.y0+6,x1:PIGPEN.x1-6,y1:PIGPEN.y1-6};
+critters.push(...Array.from({length:4},(_,i)=>new Critter({kind:'goose',seed:400+i,x:1180+i*26,y:1600+(i%2)*20,region:{x0:1120,y0:1565,x1:1390,y1:1650},speed:9,runSpeed:30,flee:34,idleMin:2,idleVar:6})));
 critters.push(...Array.from({length:3},(_,i)=>new Critter({kind:'pig',seed:300+i,x:PIGPEN.x0+18+i*12,y:PIGPEN.y0+40+i*34,region:pigRegion,speed:8,runSpeed:8,idleMin:3,idleVar:9})));
 const herd=Array.from({length:9},(_,i)=>new Cow(i));
 // Siatka nawigacyjna powstaje z reguł mapy: wolne od przeszkód i poza miejscami zaludnionymi.
@@ -472,9 +509,14 @@ const walkers=[
  new Walker('car','mW','jM',420,{color:'#8c9b95',seed:3}),
  new Walker('car','mE','eS',260,{color:'#a4684f',seed:5}),
  new Walker('car','eS','mE',60,{color:'#6f86a0',seed:13}),
+ new Walker('car','jM','mW',300,{color:'#b9a56a',seed:31}),
+ new Walker('car','eS','jM',900,{color:'#7a8f6f',seed:37}),
+ new Walker('car','mW','jM',60,{color:'#a8a6a0',seed:41}),
  new Walker('car','eS','jM',700,{police:true,seed:17}),
  new Walker('bus','mW','jM',200,{seed:19}),
- new Walker('car','jX','jD',120,{color:'#b9a56a',seed:23}),
+ new Walker('bike','jX','jD',300,{seed:43}),
+ new Walker('bike','jM','mW',500,{seed:47}),
+ new Walker('car','jX','jD',120,{color:'#a4684f',seed:23}),
  new Walker('tractor','nW','jX',60,{seed:7,cart:'grain',load:1.1}),
  new Walker('combine','eN','eS',260,{seed:11,cart:'header'}),
  new Walker('tractor','tN','eN',200,{seed:29})
@@ -483,10 +525,12 @@ const people=[
  new Person([[1165,436],[1170,480],[1240,556],[1360,600]],15,'#526c65',1,5,0),   // od drzwi domu przez furtkę na podwórze
  new Person([[1300,780],[1450,700],[1650,640]],13,'#a57660',1.1,6,0),             // po podwórku
  new Person([[1272,300],[1500,300]],11,'#7a8f5a',1,7,0),                         // przy grządkach
- new Person([[1010,96],[988,128],[988,330],[988,440]],12,'#6b7fa0',1,8,0),        // od przystanku chodnikiem do wjazdu
- new Person([[988,560],[988,900],[988,1300]],11,'#a4684f',1,6,0),                 // długi spacer chodnikiem
- new Person([[988,1560],[988,1690],[908,1690]],13,'#8a6f9a',1,6,0),              // przejście dla pieszych na drodze bocznej
- new Person([[1010,92],[1022,100]],6,'#c6a24a',1,12,0)                           // czeka na autobus
+ new Person([[982,180],[982,430]],11,'#6b7fa0',1,14,0),                          // poboczem drogi bocznej (rzadko)
+ new Person([[982,620],[982,1300]],10,'#a4684f',1,16,0),
+ new Person([[1030,1688],[1046,1688]],6,'#c6a24a',1,14,0),                       // czeka na autobus
+ new Person([[1124,1686],[1124,1794],[1090,1794]],12,'#8a6f9a',1,6,0),          // przez przejście dla pieszych
+ new Person([[300,1688],[760,1688]],11,'#6f8a73',1,8,0),
+ new Person([[1300,1688],[1620,1688]],12,'#a07a55',1.1,7,0)
 ];
 
 // Wywoływane z kroku symulacji.
