@@ -56,6 +56,12 @@ export const PROPS={
  poles:[], // generowane niżej wzdłuż drogi głównej
  sign:{x:1002,y:395},laundry:{x:1290,y:392}
 };
+// ── Magazyn zboża: dwa silosy BIN (blacha falista, dach stożkowy), kosz zasypowy i przenośnik ślimakowy ──
+export const SILOS=[{id:'silo1',x:1815,y:640,r:30},{id:'silo2',x:1815,y:712,r:30}];
+export const PIT={x:1704,y:655,w:60,h:42};                  // kosz zasypowy (kratka na poziomie gruntu)
+// Błoto i kałuże na podwórzu (wet = z wodą): ślady kół i plusk.
+export const PUDDLES=[[1450,650,34,18,1],[1335,725,26,13,0],[1625,610,30,15,1],[1710,740,28,14,0],[1300,520,22,10,1],[1560,560,20,10,0],[1520,745,24,12,1]];
+export const puddleAt=(x,y)=>PUDDLES.find(([px,py,rx,ry])=>((x-px)/(rx+4))**2+((y-py)/(ry+3))**2<1)||null;
 // Linia energetyczna wzdłuż drogi głównej, co ~150 px; omija wjazd, skrzyżowania i drogę boczną.
 {const ys=[40,190,340,640,790,1090,1240,1390,1540];
  ys.forEach((y,i)=>{if(roadClearance(1004,y)>=10)PROPS.poles.push({x:1004,y,nest:y===340})})}
@@ -78,6 +84,7 @@ function addCircle(x,y,r,id){colliders.push({shape:'circle',x,y,r,id,br:r})}
 for(const b of BUILDINGS)addRect(b.x,b.y,b.w+2,b.h+10,b.id);
 addRect(PROPS.kennel.x,PROPS.kennel.y,PROPS.kennel.w,PROPS.kennel.h,'kennel');
 for(const p of PROPS.poles)addCircle(p.x,p.y+11,5,'pole');
+for(const s of SILOS)addCircle(s.x,s.y,s.r,s.id);
 addRect(PROPS.sign.x+8,PROPS.sign.y+10,3,19,'sign');
 for(const f of FENCES){
  if(f.y1===f.y2)addRect(Math.min(f.x1,f.x2)-3,f.y1-3,Math.abs(f.x2-f.x1)+7,7,'fence');
@@ -159,4 +166,4 @@ export function pointBlocked(x,y,r=6){
  return false;
 }
 
-export const MAP={nodes:NODES,roads:ROADS,fields:FIELDS,woods:WOODS,farm:FARM,garden:GARDEN,beds:BEDS,pasture:PASTURE,buildings:BUILDINGS,props:PROPS,fences:FENCES,trees,shrubs,bales,colliders};
+export const MAP={nodes:NODES,roads:ROADS,fields:FIELDS,woods:WOODS,farm:FARM,garden:GARDEN,beds:BEDS,pasture:PASTURE,buildings:BUILDINGS,props:PROPS,fences:FENCES,silos:SILOS,pit:PIT,puddles:PUDDLES,trees,shrubs,bales,colliders};

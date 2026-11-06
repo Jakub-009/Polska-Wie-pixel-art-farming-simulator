@@ -1,6 +1,6 @@
 // Punkt wejścia: symulacja (stały krok), kolizje, kamera, ekran, restart i testy.
 // 0.4.0: mapa jako dane + kolizje OBB ze ślizganiem, pojazdy NPC na grafie dróg, poprawki 0.3.3.
-import {INIT_OTHER,INIT_TRAILER,START,C,ctx,VIEW,$,clamp,lerp,WORLD,FLD,N,keys,state,camera,RT,fx,COMBINE_SCALE,VEH,toast,FIELD_HA,DEBUG,active} from './core.js';
+import {INIT_OTHER,INIT_CARTS,SETTINGS,START,C,ctx,VIEW,$,clamp,lerp,WORLD,FLD,N,keys,state,camera,RT,fx,COMBINE_SCALE,VEH,toast,FIELD_HA,DEBUG,active} from './core.js';
 import {crop,fieldTile,tc,buildWorld} from './world.js';
 import {harvest,updateTracks,particle} from './harvest.js';
 import {worldOffset,playerObbs,otherObbs} from './vehicles.js';
@@ -11,10 +11,15 @@ import {bindControls} from './controls.js';
 import {MAP,nearbyColliders,pointBlocked} from './map.js';
 import {collide,obb} from './geometry.js';
 import {updateLife,dynamicColliders as lifeColliders,lifeInfo} from './life.js';
-import {parkedObb,headerHint,toggleHeader,switchVehicle} from './header.js';
+import {headerHint,toggleHeader,switchVehicle} from './header.js';
 import * as TRL from './trailer.js';
-const {trailerObb,updateTrailer,updateGrain,hitchHint}=TRL;
-function dynamicColliders(){const d=lifeColliders(),p=parkedObb();if(p)d.push(p);for(const o of otherObbs())d.push({...o,id:'parked-'+state.other.kind});if(!(state.vehicle==='tractor'&&state.trailer.hitched))d.push({...trailerObb(),id:'trailer'});return d}
+import * as TOW from './tow.js';
+import {MAP as _M,puddleAt} from './map.js';
+import {saveGame,loadGame,hasSave,clearSave,loadSettings} from './save.js';
+const {updateGrain}=TRL;
+const {updateCarts,hitchHint,standingCarts,cartObb}=TOW;
+// Przeszkody ruchome względem mapy: pojazdy NPC (z wózkami), drugi pojazd gracza (z holowanym wózkiem), stojące wózki.
+function dynamicColliders(){const d=lifeColliders();for(const o of otherObbs())d.push({...o,id:'parked-'+state.other.kind});for(const c of standingCarts())d.push({...cartObb(c),id:'cart-'+c.kind});return d}
 const STEP=1/60;
 function approach(v,to,amount){return v<to?Math.min(v+amount,to):Math.max(v-amount,to)}
 
@@ -56,9 +61,10 @@ function step(dt){
  state.angle+=yaw*dt;
  state.x=clamp(state.x+Math.sin(state.angle)*state.v*dt,28,WORLD.w-28);
  state.y=clamp(state.y-Math.cos(state.angle)*state.v*dt,36,WORLD.h-36);
- updateTrailer();updateLife(dt);
- resolveCollisions();updateTrailer();headerHint(dt);hitchHint(dt);updateGrain(dt);
- RT.warnT-=dt;RT.fullT-=dt;RT.spillT-=dt;
+ updateCarts();updateLife(dt);
+ resolveCollisions();updateCarts();headerHint(dt);hitchHint(dt);updateGrain(dt);
+ RT.warnT-=dt;RT.fullT-=dt;RT.spillT-=dt;RT.saveT=(RT.saveT||0)+dt;
+ if(RT.saveT>20){RT.saveT=0;saveGame()}
  RT.reelSpin+=state.tool?dt*12:0;RT.wheelTravel+=state.v*dt;RT.lifeT+=dt;
  harvest(dt);updateTracks(dt);
  RT.dustT-=dt;
@@ -66,9 +72,11 @@ function step(dt){
   RT.dustT=.1;
   for(let k=0;k<(state.tool?2:1);k++){
    const [x,y]=worldOffset((Math.random()-.5)*(state.vehicle==="tractor"?28:34)*COMBINE_SCALE,32*COMBINE_SCALE);
-   particle('dust',x,y);
+   const pu=puddleAt(x,y);
+   if(pu&&pu[4])particle('splash',x,y);else if(!pu)particle('dust',x,y);
   }
  }
+ if(!SETTINGS.particles&&fx.length>40)fx.length=40;
  for(let i=fx.length-1;i>=0;i--){
   let p=fx[i];p.life-=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;
   if(p.life<=0)fx.splice(i,1);
@@ -111,21 +119,27 @@ function run(ts){
  RT.hudT+=frame;if(RT.hudT>=.12){RT.hudT=0;hud()}
  requestAnimationFrame(run);
 }
+function applyLoaded(){
+ tc.clearRect(0,0,WORLD.w,WORLD.h);fx.length=0;keys.clear();
+ for(let j=0;j<FLD.n;j++)for(let i=0;i<FLD.n;i++)fieldTile(i,j);
+ camera.x=state.x-VIEW.w*.5;camera.y=state.y-VIEW.h*.5;clampCamera();hud();
+}
 function reset(){
  crop.fill(0);state.cut=0;
  for(let j=0;j<FLD.n;j++)for(let i=0;i<FLD.n;i++)fieldTile(i,j);
  tc.clearRect(0,0,WORLD.w,WORLD.h);fx.length=0;keys.clear();
- Object.assign(state,{vehicle:'combine',other:INIT_OTHER(),trailer:INIT_TRAILER(),auger:0,augerOut:false,unloading:false,dumping:false,stored:0,grain:0,x:START.x,y:START.y,angle:START.angle,headerOn:true,parked:null,v:0,steer:0,tool:false,tank:0,work:0,done:false,paused:false,time:16*60+35,elapsed:0,rate:1});
+ Object.assign(state,{vehicle:'combine',other:INIT_OTHER(),carts:INIT_CARTS(),auger:0,augerOut:false,unloading:false,dumping:false,flow:0,stored:0,money:0,grain:0,x:START.x,y:START.y,angle:START.angle,headerOn:true,v:0,steer:0,tool:false,tank:0,work:0,done:false,paused:false,time:16*60+35,elapsed:0,rate:1});
  camera.x=state.x-VIEW.w*.5;camera.y=state.y-VIEW.h*.5;clampCamera();
  RT.stamp=0;RT.reelSpin=0;RT.birdT=0;RT.wheelTravel=0;RT.lifeT=0;RT.strawT=0;RT.dustT=0;RT.warnT=0;
  hud();
 }
 buildWorld();
-bindControls(reset);
+loadSettings();VIEW.zoom=SETTINGS.zoom||0;size();
+bindControls(reset,{unstuck:()=>TOW.unstuck(playerObbs,dynamicColliders),saveGame,loadGame:()=>loadGame(applyLoaded),hasSave,clearSave});
 camera.x=state.x-VIEW.w*.5;camera.y=state.y-VIEW.h*.5;clampCamera();
 // Diagnostyka (testy i debug)
 window.__farmDebug={
- state:()=>({vehicle:state.vehicle,other:state.other,headerOn:state.headerOn,parked:state.parked,x:state.x,y:state.y,v:state.v,heading:state.angle,steer:state.steer,tool:state.tool,cut:state.cut,total:N,percent:state.cut/N*100,playing:state.playing,paused:state.paused,elapsed:state.elapsed,time:state.time,tank:state.tank,trailer:state.trailer,auger:state.auger,unloading:state.unloading,stored:state.stored,grain:state.grain}),
+ state:()=>({vehicle:state.vehicle,other:state.other,headerOn:state.headerOn,carts:state.carts,money:state.money,x:state.x,y:state.y,v:state.v,heading:state.angle,steer:state.steer,tool:state.tool,cut:state.cut,total:N,percent:state.cut/N*100,playing:state.playing,paused:state.paused,elapsed:state.elapsed,time:state.time,tank:state.tank,auger:state.auger,unloading:state.unloading,stored:state.stored,grain:state.grain}),
  setPosition:(x,y,a)=>{state.x=x;state.y=y;if(a!=null)state.angle=a;camera.x=x-VIEW.w/2;camera.y=y-VIEW.h/2;clampCamera()},
  setSpeed:v=>state.v=v,
  setTool:b=>state.tool=b,
@@ -135,7 +149,7 @@ window.__farmDebug={
  life:()=>lifeInfo(),
  colliders:()=>MAP.colliders.length,
  overlap:()=>{let n=0;const near=nearbyColliders(state.x,state.y,120).concat(dynamicColliders());for(const o of playerObbs())for(const c of near)if(collide(o,c))n++;return n},
- toggleHeader,switchVehicle,trailer:TRL,set:o=>Object.assign(state,o),zoom:z=>{VIEW.zoom=Math.max(0,Math.min(VIEW.maxZoom,z));dispatchEvent(new Event('resize'))},view:()=>({...VIEW}),
+ toggleHeader,switchVehicle,trailer:TRL,tow:TOW,reset,set:o=>Object.assign(state,o),zoom:z=>{VIEW.zoom=Math.max(0,Math.min(VIEW.maxZoom,z));dispatchEvent(new Event('resize'))},view:()=>({...VIEW}),
  // Test przejezdności: BFS po stanach (komórka 8 px × 8 kierunków). Ruch: do przodu/do tyłu wzdłuż kierunku albo obrót w miejscu;
  // pozycja dozwolona, gdy żaden z obrysów kombajnu (z hederem lub bez) nie koliduje ze stałymi przeszkodami.
  reach:(withHeader,fx,fy,targets)=>{

@@ -1,8 +1,8 @@
 // Sylwetka kombajnu i wspólny renderer maszyn.
 // Główny kombajn i kombajn NPC korzystają z tego samego sprite'a i skali.
-import {ctx,rect,state,COMBINE_SCALE,RT,LIGHT,TRAILER_T} from './core.js';
+import {ctx,rect,state,COMBINE_SCALE,RT,LIGHT,TRAILER_T,AUGER,VEHICLES,CARTS} from './core.js';
 import {obb} from './geometry.js';
-import {trailerObb,AUGER,TR} from './trailer.js';
+import {allCarts,towedObbs,cartDef} from './tow.js';
 const combine=document.createElement('canvas');combine.width=120;combine.height=132;let cg=combine.getContext('2d');cg.imageSmoothingEnabled=false;
 function drawCombine(){cg.clearRect(0,0,120,132);cg.save();cg.translate(60,69); // heading-up local coordinates
 // No fixed wheels in the body sprite. The ONLY wheels are drawn under the machine
@@ -52,9 +52,19 @@ function worldOffset(lx,ly){return [state.x+Math.cos(state.angle)*lx+Math.sin(st
 // piksele pozostają ostre (bez rozmycia krawędzi rect() w obróconym kontekście).
 const scratch=document.createElement('canvas');scratch.width=scratch.height=200;
 const sg=scratch.getContext('2d');sg.imageSmoothingEnabled=false;
-function drawRotated(g,x,y,angle,draw){
+const scratch2=document.createElement('canvas');scratch2.width=scratch2.height=200;
+const sg2=scratch2.getContext('2d');sg2.imageSmoothingEnabled=false;
+// Sprite rysowany głową do góry, z obrysem 1 px (spójna, czytelna krawędź wszystkich obiektów), potem obracany bez wygładzania.
+function drawRotated(g,x,y,angle,draw,outline=true){
  sg.setTransform(1,0,0,1,0,0);sg.clearRect(0,0,200,200);sg.save();sg.translate(100,100);draw(sg);sg.restore();
- g.save();g.imageSmoothingEnabled=false;g.translate(Math.round(x),Math.round(y));g.rotate(angle);g.drawImage(scratch,-100,-100);g.restore();
+ let src=scratch;
+ if(outline){
+  sg2.clearRect(0,0,200,200);
+  for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]])sg2.drawImage(scratch,dx,dy);
+  sg2.globalCompositeOperation='source-in';sg2.fillStyle='#1d2b24';sg2.fillRect(0,0,200,200);sg2.globalCompositeOperation='source-over';
+  sg2.drawImage(scratch,0,0);src=scratch2;
+ }
+ g.save();g.imageSmoothingEnabled=false;g.translate(Math.round(x),Math.round(y));g.rotate(angle);g.drawImage(src,-100,-100);g.restore();
 }
 // Shared combine renderer. Wymiary (px, 12 px = 1 m): nadwozie 41 px (3,4 m), z kołami ~50 px, heder 88 px (7,3 m).
 // Z góry skręcają tylko tylne koła (kąt jak w modelu jazdy, 0,6 rad), bieżnik przesuwa się zgodnie z kierunkiem jazdy
@@ -98,17 +108,9 @@ function drawMachineAt(g,x,y,angle,steer,travel,working,withHeader=true,scale=CO
   }
   s.drawImage(combine,-60,-69);
   if(withHeader){s.drawImage(headerCv,-60,-69);drawHeaderDynamic(s,working,travel)}
+  rect(s,-3,46,6,5,'#2c2825');rect(s,-1,48,3,2,'#6b655a');
   drawAuger(s,auger);
  });
-}
-// Heder odstawiony na ziemi: środek (x,y), kierunek „do przodu” jak w momencie zdjęcia.
-function drawParkedHeader(g,x,y,angle){
- orientedShadow(g,x,y,angle,[[44,9,0]],7);
- drawRotated(g,x,y,angle,s=>{s.drawImage(headerCv,-60,-69+54);drawHeaderDynamic2(s)});
-}
-function drawHeaderDynamic2(s){ // statyczne zęby bębna na zdjętym hederze (przesunięcie o +54 względem układu korpusu)
- for(let i=-40;i<42;i+=8)rect(s,i,-56+54+1,3,2,'#b98b57');
- rect(s,-2,-66+54,5,2,'#71604b');
 }
 // Traktor (pojazd testowy): ta sama skala i animacje co kombajn — przednie koła skręcają, bieżnik jedzie zgodnie z ruchem.
 function drawTractorAt(g,x,y,angle,steer,travel){
@@ -124,52 +126,66 @@ function drawTractorAt(g,x,y,angle,steer,travel){
   for(const side of [-1,1]){wheel(side*14,-17,8,15,steer*.6);wheel(side*14,17,10,26,0)}
   rect(s,-7,-31,14,30,'#98513b');rect(s,-6,-30,12,26,'#c26440');rect(s,-5,-30,10,3,'#d18851');
   rect(s,-10,-3,20,26,'#98513b');rect(s,-9,-2,18,24,'#567d7a');rect(s,-7,0,14,16,'#9cb5a5');rect(s,-5,2,10,2,'#c5d2bc');
-  rect(s,-8,22,16,8,'#b4623f');rect(s,-2,29,4,3,'#444a44');
+  rect(s,-8,22,16,8,'#b4623f');rect(s,-2,29,4,3,'#444a44');rect(s,-2,31,5,3,'#2a2623');rect(s,-1,32,3,1,'#6b655a');
   rect(s,-9,-26,2,3,'#edc46c');rect(s,7,-26,2,3,'#f4d275');
  });
 }
 function offAt(x,y,a,lx,ly){return [x+Math.cos(a)*lx+Math.sin(a)*(-ly),y+Math.sin(a)*lx+Math.cos(a)*ly]}
-// Obrys kolizji dowolnego pojazdu w danym położeniu.
+// Obrys kolizji dowolnego pojazdu: lista prostokątów z danych pojazdu (+ heder kombajnu).
 function vehObbs(kind,x,y,a,headerOn){
- if(kind==='tractor')return [obb(x,y,18,31.5,a)];
- const k=COMBINE_SCALE;
- const [fx,fy]=offAt(x,y,a,0,-22.5*k),[rx,ry]=offAt(x,y,a,0,23*k),[hx,hy]=offAt(x,y,a,0,-54*k);
- const o=[obb(fx,fy,26*k,22.5*k,a),obb(rx,ry,22*k,23*k,a)];
- if(headerOn)o.push(obb(hx,hy,44*k,9*k,a));return o;
-}
-function playerObbs(){
- const o=vehObbs(state.vehicle,state.x,state.y,state.angle,state.headerOn);
- if(state.vehicle==='tractor'&&state.trailer.hitched)o.push(trailerObb());
+ const o=VEHICLES[kind].obbs.map(([hw,hh,cy])=>{const [px,py]=offAt(x,y,a,0,cy);return obb(px,py,hw,hh,a)});
+ if(kind==='combine'&&headerOn){const [hx,hy]=offAt(x,y,a,0,-54*COMBINE_SCALE);o.push(obb(hx,hy,44*COMBINE_SCALE,9*COMBINE_SCALE,a))}
  return o;
 }
-function otherObbs(){const o=state.other;return vehObbs(o.kind,o.x,o.y,o.angle,state.headerOn)}
-// Przyczepa: skrzynia z deskami, burty, koła z bieżnikiem, dyszel. Zboże rośnie od środka skrzyni.
-function drawTrailerAt(g,x,y,angle,travel,load){
- orientedShadow(g,x,y,angle,[[17,32,0]],14);
- drawRotated(g,x,y,angle,s=>{
-  const off=Math.round((((-travel)%5)+5)%5);
-  for(const side of [-1,1]){
-   s.save();s.translate(side*21,12);
-   rect(s,-4,-11,8,22,'#293532');rect(s,-3,-10,6,20,'#3c4640');
-   for(let t=-11+off-5;t<11;t+=5){if(t<-11||t+3>11)continue;rect(s,-4,t,2,2,'#757b6e');rect(s,2,t+1,2,2,'#676c61')}
-   s.restore();
-  }
-  rect(s,-1,-46,3,16,'#4a3b30');rect(s,-3,-48,7,4,'#2f2a26');
-  rect(s,-18,-32,36,64,'#4f3b27');rect(s,-16,-30,32,60,'#a07f50');
-  for(let yy=-27;yy<30;yy+=6)rect(s,-16,yy,32,1,'#8a6b43');
-  rect(s,-18,-32,36,3,'#6d5338');rect(s,-18,29,36,3,'#6d5338');
-  const f=Math.min(1,load/TRAILER_T);
-  if(f>.005){
-   const ln=Math.max(6,Math.round(58*f));
-   rect(s,-15,-ln/2,30,ln,'#c79d3b');rect(s,-14,-ln/2+1,28,ln-2,'#e3b94d');
-   for(let k=-ln/2+2;k<ln/2-1;k+=3)rect(s,-14,k,28,1,'#f0cd6b');
+function playerObbs(){return vehObbs(state.vehicle,state.x,state.y,state.angle,state.headerOn).concat(towedObbs(state.vehicle))}
+function otherObbs(){const o=state.other;return vehObbs(o.kind,o.x,o.y,o.angle,state.headerOn).concat(towedObbs(o.kind))}
+// ───── wózki: przyczepa zbożowa i wózek z hederem ─────
+function wheelRect(s,cx,cy,w,h,off){
+ rect(s,cx-w/2,cy-h/2,w,h,'#262f2c');rect(s,cx-w/2+1,cy-h/2+1,w-2,h-2,'#3a443e');
+ for(let t=cy-h/2+off-5;t<cy+h/2;t+=5){if(t<cy-h/2||t+3>cy+h/2)continue;rect(s,cx-w/2,t,2,2,'#7b8174');rect(s,cx+w/2-2,t+1,2,2,'#686d62')}
+}
+function drawGrainCart(g,c,travel){
+ const d=CARTS.grain;
+ orientedShadow(g,c.x,c.y,c.angle,[[d.hw,d.hh,0]],14);
+ drawRotated(g,c.x,c.y,c.angle,s=>{
+  const off=Math.round((((-travel)%5)+5)%5),ay=Math.round(d.hh*d.axle);
+  // dyszel w kształcie litery A z uchem zaczepowym i podporą
+  for(let i=0;i<=16;i++){const x=Math.round(i/16*7);rect(s,-x-1,-47+i,2,2,'#4a3b30');rect(s,x,-47+i,2,2,'#4a3b30')}
+  rect(s,-2,-50,5,4,'#23201d');rect(s,-1,-49,3,2,'#6b655a');rect(s,6,-40,3,6,'#6e6a60');
+  // koła z błotnikami
+  for(const side of [-1,1]){wheelRect(s,side*16,ay,6,18,off);rect(s,side*16-3,ay-11,6,2,'#2b4a38');rect(s,side*16-3,ay+9,6,2,'#2b4a38')}
+  // skrzynia: stalowe burty, drewniana podłoga
+  rect(s,-14,-32,28,64,'#243b2a');rect(s,-13,-31,26,62,'#4b7a52');rect(s,-12,-30,24,60,'#5f9162');
+  rect(s,-10,-28,20,56,'#8b6d45');for(let yy=-25;yy<27;yy+=6)rect(s,-10,yy,20,1,'#755a38');
+  rect(s,-12,-31,24,3,'#79ad78');rect(s,-12,28,24,3,'#3f6a47');rect(s,12,-30,1,58,'#35583c');rect(s,-12,-28,1,56,'#7bb07a');
+  for(const yy of [-18,0,18]){rect(s,-13,yy,2,3,'#d6dccb');rect(s,11,yy,2,3,'#2b4631')}
+  rect(s,-3,29,6,2,'#1e2a22');
+  const f=Math.min(1,c.load/TRAILER_T);
+  if(f>.004){
+   const ln=Math.max(6,Math.round(54*f)),w=Math.round(14+Math.min(1,f*2)*5);
+   rect(s,-w,-ln/2,w*2,ln,'#b88b2d');rect(s,-w+1,-ln/2+1,w*2-2,ln-2,'#e3b84a');
+   rect(s,-w+1,-ln/2+1,Math.round(w*.8),ln-2,'#f0cd6a');
+   for(let k=-ln/2+2;k<ln/2-1;k+=3)rect(s,-w+2,k,w*2-4,1,'#d7a93e');
   }
  });
 }
-// Pojazdy gracza i drugi pojazd: najpierw traktor z przyczepą, na końcu kombajn (jego rura jest nad przyczepą).
+function drawHeaderCart(g,c,travel){
+ orientedShadow(g,c.x,c.y,c.angle,[[CARTS.header.hw,CARTS.header.hh,0]],10);
+ drawRotated(g,c.x,c.y,c.angle,s=>{
+  const off=Math.round((((-travel)%5)+5)%5);
+  for(let i=0;i<=18;i++){const x=Math.round(i/18*5);rect(s,-x-1,-65+i,2,2,'#4a3b30');rect(s,x,-65+i,2,2,'#4a3b30')}
+  rect(s,-2,-68,5,4,'#23201d');rect(s,-1,-67,3,2,'#6b655a');
+  for(const side of [-1,1])wheelRect(s,side*15,0,6,16,off);
+  rect(s,-9,-46,18,92,'#2c312e');rect(s,-8,-45,16,90,'#4a504b');rect(s,-8,-45,2,90,'#6b726a');
+  s.save();s.rotate(Math.PI/2);s.translate(0,54);s.drawImage(headerCv,-60,-69);drawHeaderDynamic(s,false,0);s.restore();
+ });
+}
+function drawCart(g,c,travel=0){
+ if(c.kind==='grain')drawGrainCart(g,c,travel);else drawHeaderCart(g,c,travel);
+}
+// Pojazdy gracza i drugi pojazd: najpierw wózki, potem traktor, na końcu kombajn (jego rura jest nad przyczepą).
 function drawAllVehicles(){
- const trailer=state.trailer;
- drawTrailerAt(ctx,trailer.x,trailer.y,trailer.angle,state.vehicle==='tractor'?RT.wheelTravel:0,trailer.load);
+ for(const c of allCarts())drawCart(ctx,c,c.towedBy===state.vehicle?RT.wheelTravel:0);
  const list=[{kind:state.vehicle,x:state.x,y:state.y,angle:state.angle,steer:state.steer,travel:RT.wheelTravel,player:true},
   {kind:state.other.kind,x:state.other.x,y:state.other.y,angle:state.other.angle,steer:0,travel:0,player:false}];
  list.sort((a,b)=>(a.kind==='combine')-(b.kind==='combine'));
@@ -179,4 +195,4 @@ function drawAllVehicles(){
  }
 }
 
-export {drawAllVehicles,drawTrailerAt,offAt,otherObbs,vehObbs,drawTractorAt,worldOffset,drawMachineAt,drawParkedHeader,playerObbs,orientedShadow,drawRotated};
+export {drawAllVehicles,drawCart,offAt,otherObbs,vehObbs,drawTractorAt,worldOffset,drawMachineAt,playerObbs,orientedShadow,drawRotated};

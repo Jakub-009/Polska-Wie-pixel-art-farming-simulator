@@ -102,3 +102,13 @@ Potem otwórz `http://localhost:8000/`. Alternatywnie użyj rozszerzenia Live Se
 ## Znane problemy / dalej
 
 0.4.3: przebudowa gospodarstwa (obwodnica, plac manewrowy, test przejezdności). Zbiornik (3 t) nie zapełnia się przy polu 0,28 ha — do rozwiązania razem z rozładunkiem (0.5).
+
+## 0.5.2
+- Silosy zbożowe typu BIN (blacha falista, stożkowy dach, drabina, właz, wywietrznik), kosz zasypowy i przenośnik ślimakowy. Zboże wysypane poza koszem przepada.
+- Wózek z hederem (H), przyczepa zbożowa z odczepianiem (R), holowanie przez traktor i kombajn, NPC holują przyczepy/wózki.
+- Sarny zamiast jeleni (grupy 1–3, A*, wykrywanie zacięć), zwierzęta i ludzie omijają stojące pojazdy.
+- Zapis gry (autozapis co 20 s, Kontynuuj), panel ustawień (Esc), panel podpowiedzi, B = odblokuj, F1 = pomoc.
+- Ślady kolein, plusk w kałużach, wyostrzony obraz (obrys sprite'ów), mniejsze samochody.
+- Nowe pliki: tow.js, obstacles.js, nav.js, silo.js, markers.js, save.js.
+- Klawisze: R zaczep, E wysyp, K sprzedaż, B odblokuj, U/J ślimak, V pojazd.
+- Na później (0.6.0): pora dnia, agregat uprawowy.
