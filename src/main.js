@@ -41,7 +41,7 @@ function resolveCollisions(){
   const dir=Math.sign(state.v)||0,hx=Math.sin(state.angle)*dir,hy=-Math.cos(state.angle)*dir;
   const impact=clamp(-(hx*hitN.nx+hy*hitN.ny),0,1);
   state.v*=1-impact;if(Math.abs(state.v)<.4)state.v=0;
-  if(RT.warnT<=0&&impact>.25){toast('PRZESZKODA — UWAŻAJ');RT.warnT=4}
+  if(RT.warnT<=0&&impact>.25){toast('Przeszkoda — jedź ostrożniej.');RT.warnT=4}
  }
 }
 function step(dt){

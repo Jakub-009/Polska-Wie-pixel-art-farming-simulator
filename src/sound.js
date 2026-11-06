@@ -26,9 +26,9 @@ function soundInit(){
 }
 function toggleSound(){
  if(!snd)soundInit();state.mute=!state.mute;
- $('#soundbtn').textContent=state.mute?'♪ WYŁ.':'♪ WŁ.';
+ $('#soundbtn').textContent=state.mute?'Dźwięk: wył.':'Dźwięk: wł.';
  snd?.ac.resume();
- if(!state.mute)toast('DŹWIĘK WŁĄCZONY');
+ if(!state.mute)toast('Dźwięk włączony.');
 }
 function updateSound(gas){
  if(!snd)return;

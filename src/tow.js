@@ -64,20 +64,20 @@ export function hitchCandidate(){
  return null;
 }
 export const TOOLS=['tiller','seeder'];
-const NAMES={grain:'PRZYCZEPĘ',header:'WÓZEK Z HEDEREM',tiller:'AGREGAT',seeder:'SIEWNIK'};
+const NAMES={grain:'PRZYCZEPĘ',header:'WÓZEK Z HEDEREM',tiller:'AGREGAT',seeder:'SIEWNIK'}; // biernik
 export function toggleHitch(){
  if(!state.playing||state.paused)return;
  const k=state.vehicle,cur=towedBy(k);
- if(Math.abs(state.v)>1.5){toast('ZATRZYMAJ POJAZD');return}
- if(cur){cur.towedBy=null;cur.hx=null;cur.working=false;if(TOOLS.includes(cur.kind))state.tool=false;if(cur.kind==='grain')state.dumping=false;toast(({grain:'PRZYCZEPA',header:'WÓZEK',tiller:'AGREGAT',seeder:'SIEWNIK'})[cur.kind]+' ODCZEPIONY');return}
+ if(Math.abs(state.v)>1.5){toast('Zatrzymaj pojazd.');return}
+ if(cur){cur.towedBy=null;cur.hx=null;cur.working=false;if(TOOLS.includes(cur.kind))state.tool=false;if(cur.kind==='grain')state.dumping=false;toast('Odczepiono: '+({grain:'przyczepa',header:'wózek z hederem',tiller:'agregat',seeder:'siewnik'})[cur.kind]+'.');return}
  const c=hitchCandidate();
- if(!c){toast('COFNIJ DO DYSZLA WÓZKA I USTAW SIĘ W JEGO OSI');return}
+ if(!c){toast('Zacofaj do dyszla i ustaw się w osi maszyny.');return}
  // dociągnij dyszel do zaczepu
  const H=hitchPoint(k),[tx,ty]=tongueTip(c);c.x+=H[0]-tx;c.y+=H[1]-ty;
- c.towedBy=k;c.hx=H[0];c.hy=H[1];toast(NAMES[c.kind]+' ZACZEPIONO');
+ c.towedBy=k;c.hx=H[0];c.hy=H[1];toast('Zaczepiono: '+NAMES[c.kind].toLowerCase()+'.');
  sfx('clunk');
 }
-export function hitchHint(dt){RT.hitchT-=dt;if(RT.hitchT<=0&&hitchCandidate()){toast('R — ZACZEP '+NAMES[hitchCandidate().kind]);RT.hitchT=6}}
+export function hitchHint(dt){RT.hitchT-=dt;if(RT.hitchT<=0&&hitchCandidate()){toast('R zaczepia: '+NAMES[hitchCandidate().kind].toLowerCase()+'.');RT.hitchT=6}}
 
 // Odblokowanie (B): najbliższe wolne miejsce wokół pojazdu; wózki prostowane za nim.
 export function unstuck(playerObbsFn,dyn){
@@ -98,8 +98,8 @@ export function unstuck(playerObbsFn,dyn){
   if(free(x,y,a0)){
    state.x=x;state.y=y;state.v=0;
    const c=towedBy(state.vehicle);if(c){const H=hitchPoint(state.vehicle);alignCart(c,H[0],H[1],state.angle)}
-   toast('POJAZD ODBLOKOWANY');return;
+   toast('Pojazd odblokowany.');return;
   }
  }
- toast('BRAK WOLNEGO MIEJSCA W POBLIŻU');
+ toast('Brak wolnego miejsca w pobliżu.');
 }

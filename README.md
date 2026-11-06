@@ -103,6 +103,12 @@ Potem otwórz `http://localhost:8000/`. Alternatywnie użyj rozszerzenia Live Se
 
 0.4.3: przebudowa gospodarstwa (obwodnica, plac manewrowy, test przejezdności). Zbiornik (3 t) nie zapełnia się przy polu 0,28 ha — do rozwiązania razem z rozładunkiem (0.5).
 
+## 0.6.2
+- Dyszle agregatu i siewnika jako ramy w kształcie A kończące się dokładnie na zaczepie.
+- Kury, gęsi i pies chodzą po całym gospodarstwie (nawigacja po siatce, losowe przystanki, stado gęsi z przewodnikiem).
+- Nowy jednolity interfejs pikselowy, stały pasek sterowania (do wyłączenia w ustawieniach), postęp orki i siewu.
+- Przepisane teksty i komunikaty; ekran „Żniwa ukończone” zastąpiony komunikatem — gra toczy się dalej.
+
 ## 0.6.1
 - Droga dolna jest główną (największy ruch: auta, radiowóz, autobus PKS, rowerzysta): chodnik po północnej stronie, przystanek PKS przy skrzyżowaniu (wiata na chodniku, słupek i ławka po drugiej stronie), przejście dla pieszych, wiejskie latarnie na drewnianych słupach, tylko przerywana oś, łaty i pęknięcia na asfalcie, rów po południowej stronie.
 - Droga pionowa jest wiejska: asfalt bez oznakowania, pobocza z żwiru, rowy z przepustami, rzadkie latarnie, mały ruch, piesi na poboczu. Bez pętli i przystanku — wychodzi za mapę.

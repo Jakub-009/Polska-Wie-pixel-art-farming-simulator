@@ -1,6 +1,6 @@
 // Wspólne jednostki, stan symulacji i małe funkcje rysowania.
 // 0.4.0: stały krok czasowy, pauza jako osobny stan, tryb debug, liczniki czasu zamiast modulo klatek.
-export const VERSION='0.6.1';
+export const VERSION='0.6.2';
 export const C=document.querySelector('#game');
 export const ctx=C.getContext('2d',{alpha:false});
 export const VIEW={w:640,h:360,scale:3,zoom:0,maxZoom:0};
@@ -32,7 +32,7 @@ export const INIT_CARTS=()=>({
 export const state={vehicle:'combine',other:INIT_OTHER(),carts:INIT_CARTS(),auger:0,augerOut:false,unloading:false,dumping:false,flow:0,stored:0,money:0,grain:0,x:START.x,y:START.y,angle:START.angle,v:0,steer:0,tool:false,headerOn:true,tank:0,time:16*60+35,
   elapsed:0,rate:1,work:0,done:false,playing:false,paused:false,mute:true,cut:0};
 // Ustawienia gracza (zapamiętywane w localStorage).
-export const SETTINGS={volume:.8,particles:true,hints:true,zoom:0};
+export const SETTINGS={volume:.8,particles:true,hints:true,keybar:true,zoom:0};
 export const active=()=>state.playing&&!state.paused;
 export const camera={x:state.x-340,y:state.y-200};
 // Liczniki czasu (sekundy) zastępują dawne RT.frame%n — zachowanie nie zależy od odświeżania ekranu.

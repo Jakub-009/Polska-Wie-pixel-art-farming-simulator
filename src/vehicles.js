@@ -180,14 +180,21 @@ function drawHeaderCart(g,c,travel){
   s.save();s.rotate(Math.PI/2);s.translate(0,54);s.drawImage(headerCv,-60,-69);drawHeaderDynamic(s,false,0);s.restore();
  });
 }
+// Dyszel w kształcie litery A: dwa ramiona od ucha zaczepowego (tipY) do ramy maszyny (baseY), poprzeczka i podpórka.
+// Koniec dyszla (tipY) musi leżeć dokładnie w odległości hh+tongue od środka wózka — tam zaczepia się pojazd.
+function aFrame(s,tipY,baseY,half,col='#3a3a36',hi='#6a675f'){
+ const n=Math.abs(baseY-tipY);
+ for(let i=0;i<=n;i++){const t=i/n,x=Math.round(half*t),y=tipY+i;rect(s,-x-1,y,2,2,col);rect(s,x-1,y,2,2,col);if(i%4===0){rect(s,-x-1,y,1,1,hi);rect(s,x,y,1,1,hi)}}
+ rect(s,-half*.6,tipY+n*.55,half*1.2,2,col);              // poprzeczka
+ rect(s,-3,tipY-2,6,4,'#23201d');rect(s,-2,tipY-1,4,2,'#8a8578'); // ucho zaczepowe
+}
 // Agregat uprawowy (kultywator z wałem strunowym) i siewnik zawieszany: szersze od traktora, jak prawdziwe narzędzia.
 function drawTiller(g,c,travel){
  const d=CARTS.tiller;
  orientedShadow(g,c.x,c.y,c.angle,[[d.hw,d.hh,0]],8);
  drawRotated(g,c.x,c.y,c.angle,s=>{
   const w=!!c.working;
-  for(let i=0;i<=22;i++){const x=Math.round(i/22*9);rect(s,-x-1,-62+i,2,2,'#3a3a36');rect(s,x,-62+i,2,2,'#3a3a36')}
-  rect(s,-2,-65,5,4,'#23201d');rect(s,-1,-64,3,2,'#6b655a');
+  aFrame(s,-(d.hh+d.tongue),-12,15);
   // belka nośna i rama
   rect(s,-29,-12,58,9,'#25404f');rect(s,-28,-11,56,7,'#3f6a82');rect(s,-28,-11,56,2,'#6c9ab2');
   rect(s,-26,-4,3,18,'#25404f');rect(s,23,-4,3,18,'#25404f');rect(s,-1,-20,3,12,'#25404f');
@@ -204,8 +211,7 @@ function drawSeeder(g,c,travel){
  orientedShadow(g,c.x,c.y,c.angle,[[d.hw,d.hh,0]],10);
  drawRotated(g,c.x,c.y,c.angle,s=>{
   const w=!!c.working;
-  for(let i=0;i<=22;i++){const x=Math.round(i/22*9);rect(s,-x-1,-64+i,2,2,'#3a3a36');rect(s,x,-64+i,2,2,'#3a3a36')}
-  rect(s,-2,-67,5,4,'#23201d');rect(s,-1,-66,3,2,'#6b655a');
+  aFrame(s,-(d.hh+d.tongue),-20,14);
   // rama, skrzynia nasienna z pokrywą, rurki rozsiewające
   rect(s,-27,-6,54,6,'#4b2d22');rect(s,-26,-5,52,4,'#7d4a37');
   rect(s,-24,-20,48,18,'#235033');rect(s,-23,-19,46,16,'#3f7a4a');rect(s,-23,-19,46,3,'#66a56d');

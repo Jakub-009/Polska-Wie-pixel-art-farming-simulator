@@ -8,7 +8,7 @@ import {PIGPEN} from './map.js';
 import {obb,circle,collide} from './geometry.js';
 import {advanceCart,alignCart,cartObb} from './tow.js';
 import {setNpcObbs,refreshObstacles,obstacleDist,playerDist,pushOutObstacles} from './obstacles.js';
-import {buildNav,walkable,nearestWalkable,findPath} from './nav.js';
+import {buildNav,walkable,nearestWalkable,findPath,createNav} from './nav.js';
 // Miejsca zaludnione, których dzikie zwierzęta unikają: gospodarstwo z otoczeniem, pastwisko z krowami i drogi.
 function populated(x,y){
  const F=MAP.farm;
@@ -355,18 +355,19 @@ class Group{
 }
 class Wild{
  constructor(o){
-  Object.assign(this,{heading:hash(o.seed,1)*6.28,v:0,state:'idle',t:1+hash(o.seed,2)*6,path:[],pi:0,phase:hash(o.seed,4)*6,rng:(o.seed*7919)|0,
+  Object.assign(this,{seedOff:hash(o.seed,9)*6.28,heading:hash(o.seed,1)*6.28,v:0,state:'idle',t:1+hash(o.seed,2)*6,path:[],pi:0,phase:hash(o.seed,4)*6,rng:(o.seed*7919)|0,
    speed:14,run:50,flee:110,leash:200,idleMin:4,idleVar:10,blockT:0,chkT:0,stuckN:0},o);
-  const p=nearestWalkable(this.x,this.y,12);if(p){this.x=p[0];this.y=p[1]}
+  this.nav=this.nav||{walkable,nearestWalkable,findPath};
+  const p=this.nav.nearestWalkable(this.x,this.y,12);if(p){this.x=p[0];this.y=p[1]}
   this.lx=this.x;this.ly=this.y;
  }
  rand(){this.rng=(Math.imul(this.rng,1664525)+1013904223)|0;return((this.rng>>>0)%100000)/100000}
- plan(tx,ty){const p=findPath(this.x,this.y,tx,ty,dynBlock);if(!p||!p.length)return false;this.path=p;this.pi=0;this.dest=[tx,ty];return true}
+ plan(tx,ty){const p=this.nav.findPath(this.x,this.y,tx,ty,dynBlock);if(!p||!p.length)return false;this.path=p;this.pi=0;this.dest=[tx,ty];return true}
  wander(){
   const G=this.group;
   for(let k=0;k<14;k++){
    const a=this.rand()*6.283,d=30+this.rand()*this.leash,x=G.hx+Math.cos(a)*d,y=G.hy+Math.sin(a)*d;
-   if(walkable(x,y)&&this.plan(x,y)){this.state='walk';return}
+   if(this.nav.walkable(x,y)&&this.plan(x,y)){this.state='walk';return}
   }
   this.state='idle';this.t=3+this.rand()*4;
  }
@@ -374,7 +375,7 @@ class Wild{
   const away=Math.atan2(this.y-state.y,this.x-state.x);
   for(const dist of [340,230,140])for(const off of [0,.5,-.5,1,-1,1.6,-1.6]){
    const x=this.x+Math.cos(away+off)*dist,y=this.y+Math.sin(away+off)*dist;
-   if(walkable(x,y)&&this.plan(x,y)){this.state='run';return true}
+   if(this.nav.walkable(x,y)&&this.plan(x,y)){this.state='run';return true}
   }
   return false;
  }
@@ -388,7 +389,9 @@ class Wild{
   const dx=wp[0]-this.x,dy=wp[1]-this.y,d=Math.hypot(dx,dy);
   if(d<7){this.pi++;return}
   const run=this.state==='run',sp=run?this.run:this.speed;
-  this.heading+=clamp(angDiff(this.heading,Math.atan2(dy,dx)),-(run?7:3.5)*dt,(run?7:3.5)*dt);
+  const wob=run?0:(this.wob||0)*Math.sin(this.phase*1.9+this.seedOff);
+  if(!run&&this.peckP&&this.rand()<this.peckP*dt){this.state='idle';this.t=.8+this.rand()*2.2;return}   // przystanek na dziobanie / węszenie
+  this.heading+=clamp(angDiff(this.heading,Math.atan2(dy,dx)+wob),-(run?7:3.5)*dt,(run?7:3.5)*dt);
   this.v+=clamp(sp-this.v,-60*dt,60*dt);
   const nx=this.x+Math.cos(this.heading)*this.v*dt,ny=this.y+Math.sin(this.heading)*this.v*dt;
   if(obstacleDist(nx,ny)<9){ // stojący pojazd na drodze — czekaj i zaplanuj trasę dookoła
@@ -402,13 +405,17 @@ class Wild{
    const moved=Math.hypot(this.x-this.lx,this.y-this.ly);this.lx=this.x;this.ly=this.y;this.chkT=0;
    if(moved<8){
     this.stuckN++;
-    if(this.stuckN>=3){const p=nearestWalkable(this.x,this.y,10);if(p){this.x=p[0];this.y=p[1]}this.state='idle';this.t=2;this.stuckN=0;this.v=0}
+    if(this.stuckN>=3){const p=this.nav.nearestWalkable(this.x,this.y,10);if(p){this.x=p[0];this.y=p[1]}this.state='idle';this.t=2;this.stuckN=0;this.v=0}
     else this.wander();
    }else this.stuckN=0;
   }
  }
  draw(){
+  const idle=this.state==='idle';
   if(this.kind==='roe')drawRoe(ctx,this.x,this.y,this.heading,this.phase,this.state==='run');
+  else if(this.kind==='chicken')drawChicken(ctx,this.x,this.y,this.heading,idle&&Math.sin(this.phase*7+this.seedOff)>.3?1:0);
+  else if(this.kind==='goose')drawGoose(ctx,this.x,this.y,this.heading,this.phase,idle);
+  else if(this.kind==='dog')drawDog(ctx,this.x,this.y,this.heading,this.phase);
   else drawFox(ctx,this.x,this.y,this.heading,this.phase,this.state==='run');
  }
 }
@@ -477,16 +484,9 @@ class Critter{
   else drawFox(ctx,this.x,this.y,this.heading,this.phase,this.state==='run');
  }
 }
-const K=MAP.props.kennel;
-const yardRegion={x0:1285,y0:590,x1:1700,y1:785};
-const critters=[
- ...Array.from({length:7},(_,i)=>new Critter({kind:'chicken',seed:100+i,x:1400+i*30,y:640+(i%3)*30,region:yardRegion,speed:11,runSpeed:42,flee:32,idleMin:1,idleVar:3})),
- new Critter({kind:'dog',seed:200,x:K.x-10,y:K.y+30,region:{x0:1062,y0:160,x1:1545,y1:450},near:{x:K.x+10,y:K.y+20,r:70},speed:22,runSpeed:44,idleMin:3,idleVar:8,
-  avoid:(x,y)=>{const B=MAP.beds;return x>B.x-12&&x<B.x+B.w+12&&y>B.y-12&&y<B.y+B.h+12}})
-];
+const critters=[];
 // Wybieg przy chlewiku: trzy świnie, które łażą po wybiegu i leżą przy korycie.
 const pigRegion={x0:PIGPEN.x0+8,y0:PIGPEN.y0+6,x1:PIGPEN.x1-6,y1:PIGPEN.y1-6};
-critters.push(...Array.from({length:4},(_,i)=>new Critter({kind:'goose',seed:400+i,x:1180+i*26,y:1600+(i%2)*20,region:{x0:1120,y0:1565,x1:1390,y1:1650},speed:9,runSpeed:30,flee:34,idleMin:2,idleVar:6})));
 critters.push(...Array.from({length:3},(_,i)=>new Critter({kind:'pig',seed:300+i,x:PIGPEN.x0+18+i*12,y:PIGPEN.y0+40+i*34,region:pigRegion,speed:8,runSpeed:8,idleMin:3,idleVar:9})));
 const herd=Array.from({length:9},(_,i)=>new Cow(i));
 // Siatka nawigacyjna powstaje z reguł mapy: wolne od przeszkód i poza miejscami zaludnionymi.
@@ -503,6 +503,25 @@ const wildlife=[
 ];
 wildlife.push(mkWild('roe',2060,1300,67,gE),mkWild('roe',2090,1330,68,gE));
 const groups=[gA,gB,gC,gD,gF1,gF2,gE];
+// ───────── zwierzęta gospodarskie: kury, gęsi i pies chodzą po całym gospodarstwie (A* po osobnej siatce, nie wychodzą za płot) ─────────
+const FM=MAP.farm,BD=MAP.beds;
+const farmNav=createNav((x,y)=>x>FM.x+14&&x<FM.x+FM.w-14&&y>FM.y+14&&y<FM.y+FM.h-14&&!pointBlocked(x,y,10)&&!(x>BD.x-14&&x<BD.x+BD.w+14&&y>BD.y-14&&y<BD.y+BD.h+14));
+class FixedGroup extends Group{update(){}}
+const gYard=new FixedGroup(1450,650,81),gGarden=new FixedGroup(1300,300,82),gBig=new FixedGroup(1400,640,83);
+const flock={hx:1400,hy:830,seed:84,n:0,rnd(){return hash(84,50+this.n++)},update(){}};
+const mkFarm=(kind,x,y,seed,group,extra)=>new Wild({kind,x,y,seed,group,nav:farmNav,...extra});
+const chick={speed:13,run:46,flee:46,leash:300,idleMin:1,idleVar:4,wob:.55,peckP:.35};
+const goose={speed:15,run:40,flee:60,leash:90,idleMin:2,idleVar:5,wob:.28,peckP:.22};
+const leader=mkFarm('goose',1545,705,401,gBig,{...goose,leash:460});
+const farmies=[
+ ...Array.from({length:4},(_,i)=>mkFarm('chicken',1400+i*30,650+(i%2)*26,100+i,gYard,chick)),
+ ...Array.from({length:3},(_,i)=>mkFarm('chicken',1230+i*40,260+(i%2)*30,110+i,gGarden,{...chick,leash:250})),
+ leader,
+ ...Array.from({length:4},(_,i)=>mkFarm('goose',1565+i*22,715+(i%2)*20,402+i,flock,goose)),
+ mkFarm('dog',1215,335,200,gBig,{speed:24,run:60,flee:44,leash:520,idleMin:5,idleVar:12,wob:.18})
+];
+wildlife.push(...farmies);
+
 
 // Ruch (0.6.0): główna droga — najwięcej aut, policja i autobus PKS; boczna — pojedyncze auta; polne — traktory i kombajn.
 const walkers=[
@@ -538,6 +557,7 @@ function updateLife(dt){
  setNpcObbs(dynamicColliders());refreshObstacles();
  for(const c of herd)c.update(dt,herd);
  for(const g of groups)g.update(dt);
+ flock.hx=leader.x;flock.hy=leader.y;
  for(const a of wildlife)a.update(dt);
  for(const c of critters)c.update(dt);
  for(const w of walkers)w.update(dt,walkers,people);

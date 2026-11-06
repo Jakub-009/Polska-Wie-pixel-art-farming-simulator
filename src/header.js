@@ -17,34 +17,34 @@ export function canAttach(){
 }
 export function toggleHeader(){
  if(!state.playing||state.paused)return;
- if(state.vehicle!=='combine'){toast('HEDER DOTYCZY KOMBAJNU — V ZMIENIA POJAZD');return}
- if(Math.abs(state.v)>1.5){toast('ZATRZYMAJ KOMBAJN, ABY ZMIENIĆ HEDER');return}
+ if(state.vehicle!=='combine'){toast('Heder ma tylko kombajn — przesiądź się (V).');return}
+ if(Math.abs(state.v)>1.5){toast('Zatrzymaj kombajn, by zmienić heder.');return}
  const c=state.carts.header;
  if(state.headerOn){
-  if(state.tool){toast('NAJPIERW PODNIEŚ HEDER (SPACJA)');return}
+  if(state.tool){toast('Najpierw podnieś heder (spacja).');return}
   const [x,y]=worldOffset(0,-HDR_DIST);
   const probe={...c,x,y,angle:state.angle-Math.PI/2};
   const o=cartObb(probe);
-  for(const s of nearbyColliders(x,y,110))if(collide(o,s)){toast('ZA MAŁO MIEJSCA NA ODSTAWIENIE HEDERA');return}
+  for(const s of nearbyColliders(x,y,110))if(collide(o,s)){toast('Za mało miejsca, by odstawić heder.');return}
   Object.assign(c,{x,y,angle:probe.angle,towedBy:null,hx:null});
   state.headerOn=false;state.tool=false;
-  toast('HEDER NA WÓZKU — COFNIJ; R ZACZEPIA WÓZEK DO POJAZDU');
+  toast('Heder stoi na wózku — zacofaj, a R zaczepi wózek.');
  }else{
-  if(!canAttach()){toast('PODJEDŹ PRZODEM DO HEDERA, USTAWIAJĄC SIĘ RÓWNOLEGLE');return}
-  state.headerOn=true;c.towedBy=null;c.hx=null;toast('HEDER ZAŁOŻONY');
+  if(!canAttach()){toast('Podjedź przodem do hedera i ustaw się równolegle.');return}
+  state.headerOn=true;c.towedBy=null;c.hx=null;toast('Heder założony.');
  }
 }
 export function headerHint(dt){
  RT.hintT-=dt;
- if(RT.hintT<=0&&canAttach()){toast('H — ZAŁÓŻ HEDER');RT.hintT=6}
+ if(RT.hintT<=0&&canAttach()){toast('Heder jest przed maską — H zakłada.');RT.hintT=6}
 }
 // V: przesiadka między kombajnem a traktorem. Zostawiony pojazd stoi w miejscu (z zaczepionym wózkiem) i jest przeszkodą.
 export function switchVehicle(){
  if(!state.playing||state.paused)return;
- if(Math.abs(state.v)>1.5){toast('ZATRZYMAJ POJAZD, ABY SIĘ PRZESIĄŚĆ');return}
+ if(Math.abs(state.v)>1.5){toast('Zatrzymaj pojazd, by się przesiąść.');return}
  const o=state.other,prev={kind:state.vehicle,x:state.x,y:state.y,angle:state.angle};
  state.vehicle=o.kind;state.x=o.x;state.y=o.y;state.angle=o.angle;state.other=prev;
  state.v=0;state.steer=0;state.tool=false;for(const c of Object.values(state.carts))c.working=false;
  camera.x=state.x-VIEW.w*.5;camera.y=state.y-VIEW.h*.5;
- toast(state.vehicle==='tractor'?'TRAKTOR — SZYBSZY, BEZ HEDERA':'KOMBAJN');
+ toast(state.vehicle==='tractor'?'Przesiadka: traktor.':'Przesiadka: kombajn.');
 }
