@@ -51,6 +51,15 @@ Potem otwórz `http://localhost:8000/`. Alternatywnie użyj rozszerzenia Live Se
 | `src/controls.js` | Klawiatura, dotyk, pauza |
 | `src/main.js` | Stały krok symulacji, kolizje, kamera, restart, diagnostyka |
 
+## Zmiany w 0.4.2
+
+- **Proporcje pojazdów:** kombajn węższy (nadwozie 3,4 m, z kołami ~4 m, heder 7,3 m), auto 4,5 m, traktor 2,8×5 m; obrysy kolizji dopasowane.
+- **Bieżnik** kręci się zgodnie z kierunkiem jazdy, z prędkością maszyny; skręt tylnych kół zgodny z modelem jazdy (0,6 rad).
+- **Ostre obracanie sprite'ów:** pojazdy i zwierzęta rysowane „głową do góry” na płótnie roboczym, potem obracane bez wygładzania.
+- **Słupy** co ~150 px wzdłuż całej drogi głównej, z przewodami (warstwa nadziemna) i kolizjami.
+- **Stado 9 krów** (pasie się / idzie, płynny obrót, trzymanie się razem, omijanie).
+- **Jelenie:** 3 grupy (7 sztuk) wędrują przez otwarte pola, żerują i uciekają przed maszyną.
+
 ## Zmiany w 0.4.1
 
 - **Skala:** kombajn w skali 1:1 (12 px/m, bez `scale()`, więc bez „mixeli”); drzewa większe (`TREE_SCALE` w `map.js`, rysowane w docelowym rozmiarze), krzewy ×1,4; drogi szersze (5 m).
@@ -70,4 +79,4 @@ Potem otwórz `http://localhost:8000/`. Alternatywnie użyj rozszerzenia Live Se
 
 ## Znane problemy / dalej
 
-0.4.2: obrót sprite'ów z prerenderowanych klatek, paleta, ściana domu/stodoły z przodu. Zbiornik (3 t) nie zapełnia się przy polu 0,28 ha — do rozwiązania razem z rozładunkiem (0.5).
+0.4.3: przebudowa gospodarstwa (obwodnica, plac manewrowy, test przejezdności). Zbiornik (3 t) nie zapełnia się przy polu 0,28 ha — do rozwiązania razem z rozładunkiem (0.5).

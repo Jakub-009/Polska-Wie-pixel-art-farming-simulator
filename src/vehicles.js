@@ -42,44 +42,52 @@ function rotateOffset(px,py,a){return [Math.cos(a)*px+Math.sin(a)*(-py),Math.sin
 function worldOffset(lx,ly){return [state.x+Math.cos(state.angle)*lx+Math.sin(state.angle)*(-ly),state.y+Math.sin(state.angle)*lx+Math.cos(state.angle)*ly]}
 // Shared combine renderer. A single model at a single scale for both combine machines.
 // Viewed from above, only the REAR wheels steer; front wheels are fixed and larger.
+// Pojazdy rysuje się najpierw „głową do góry” na małym płótnie, a potem obraca z wyłączonym wygładzaniem —
+// piksele pozostają ostre (bez rozmycia krawędzi rect() w obróconym kontekście).
+const scratch=document.createElement('canvas');scratch.width=scratch.height=200;
+const sg=scratch.getContext('2d');sg.imageSmoothingEnabled=false;
+function drawRotated(g,x,y,angle,draw){
+ sg.setTransform(1,0,0,1,0,0);sg.clearRect(0,0,200,200);sg.save();sg.translate(100,100);draw(sg);sg.restore();
+ g.save();g.imageSmoothingEnabled=false;g.translate(Math.round(x),Math.round(y));g.rotate(angle);g.drawImage(scratch,-100,-100);g.restore();
+}
+// Shared combine renderer. Wymiary (px, 12 px = 1 m): nadwozie 41 px (3,4 m), z kołami ~50 px, heder 88 px (7,3 m).
+// Z góry skręcają tylko tylne koła (kąt jak w modelu jazdy, 0,6 rad), bieżnik przesuwa się zgodnie z kierunkiem jazdy
+// z prędkością maszyny (górna powierzchnia opony jedzie do przodu względem kadłuba).
 function drawMachineAt(g,x,y,angle,steer,travel,working,scale=COMBINE_SCALE){
- orientedShadow(g,x,y,angle,[[33*scale,45.5*scale,.5*scale],[44*scale,9*scale,-54*scale]],18);
- g.save();g.translate(Math.round(x),Math.round(y));g.rotate(angle);g.scale(scale,scale);
- // Ground-contact shadow, not a second set of black tyres.
- // Top-down tyre textures shift with distance rather than spinning like circular side-view wheels.
- // The front axle is FIXED; rear wheels steer the opposite way to the requested turn.
- const phase=((Math.round(travel/11)%5)+5)%5;
- for(const axle of [{y:-14,offset:25,w:10,h:25,rear:false},{y:32,offset:21,w:8,h:17,rear:true}]){
-  for(const side of [-1,1]){
-   const wx=side*(axle.offset+axle.w*.18);
-   g.save();g.translate(wx,axle.y);
-   if(axle.rear)g.rotate(-steer*.29); // rear steering axle
-   rect(g,-axle.w/2,-axle.h/2,axle.w,axle.h,'#293532');
-   rect(g,-axle.w/2+1,-axle.h/2+1,axle.w-2,axle.h-2,'#3c4640');
-   for(let t=-axle.h/2+phase;t<axle.h/2;t+=5){
-    rect(g,-axle.w/2,t,3,2,'#757b6e');rect(g,axle.w/2-3,t+1,3,2,'#676c61');
+ orientedShadow(g,x,y,angle,[[27*scale,45.5*scale,.5*scale],[44*scale,9*scale,-54*scale]],18);
+ drawRotated(g,x,y,angle,s=>{
+  s.scale(scale,scale);
+  const off=Math.round((((-travel)%5)+5)%5);
+  for(const axle of [{y:-14,offset:18,w:10,h:25,rear:false},{y:32,offset:14,w:8,h:17,rear:true}]){
+   for(const side of [-1,1]){
+    s.save();s.translate(side*(axle.offset+axle.w*.18),axle.y);
+    if(axle.rear)s.rotate(-steer*.6);
+    rect(s,-axle.w/2,-axle.h/2,axle.w,axle.h,'#293532');
+    rect(s,-axle.w/2+1,-axle.h/2+1,axle.w-2,axle.h-2,'#3c4640');
+    for(let t=-axle.h/2+off-5;t<axle.h/2;t+=5){
+     if(t<-axle.h/2||t+3>axle.h/2)continue;
+     rect(s,-axle.w/2,t,3,2,'#757b6e');rect(s,axle.w/2-3,t+1,3,2,'#676c61');
+    }
+    s.restore();
    }
-   g.restore();
   }
- }
- g.drawImage(combine,-60,-69);
- // Only the reel and cutter animate, NOT stationary geometric wheels.
- if(working){
+  s.drawImage(combine,-60,-69);
+  if(working){
    const q=Math.round(Math.sin(RT.reelSpin*1.35));
-   rect(g,-35,-52+q,70,1,'#edbc73');
-   for(let i=-34;i<36;i+=13)rect(g,i,-57+(Math.floor(RT.reelSpin)%4),2,4,'#ad673f');
- }
- const reel=Math.floor((working?RT.reelSpin:travel*.12))%5;
- for(let i=-40;i<42;i+=8)rect(g,i,-56+(reel+5)%3,3,2,working?'#f2c078':'#b98b57');
- rect(g,-2,-66,5,2,working?'#e7d06f':'#71604b');
- g.restore();
+   rect(s,-35,-52+q,70,1,'#edbc73');
+   for(let i=-34;i<36;i+=13)rect(s,i,-57+(Math.floor(RT.reelSpin)%4),2,4,'#ad673f');
+  }
+  const reel=Math.floor((working?RT.reelSpin:travel*.12))%5;
+  for(let i=-40;i<42;i+=8)rect(s,i,-56+(reel+5)%3,3,2,working?'#f2c078':'#b98b57');
+  rect(s,-2,-66,5,2,working?'#e7d06f':'#71604b');
+ });
 }
 // Obrys kolizji kombajnu: kabina z przednią osią, tył z silnikiem i heder (obrócone prostokąty w świecie).
 function playerObbs(){
  const k=COMBINE_SCALE,a=state.angle;
  const [fx,fy]=worldOffset(0,-22.5*k),[rx,ry]=worldOffset(0,23*k),[hx,hy]=worldOffset(0,-54*k);
- return [obb(fx,fy,32*k,22.5*k,a),obb(rx,ry,26*k,23*k,a),obb(hx,hy,44*k,9*k,a)];
+ return [obb(fx,fy,26*k,22.5*k,a),obb(rx,ry,22*k,23*k,a),obb(hx,hy,44*k,9*k,a)];
 }
 function drawHarvester(){drawMachineAt(ctx,state.x,state.y,state.angle,state.steer,RT.wheelTravel,state.tool)}
 
-export {worldOffset,drawMachineAt,drawHarvester,playerObbs,orientedShadow};
+export {worldOffset,drawMachineAt,drawHarvester,playerObbs,orientedShadow,drawRotated};

@@ -209,7 +209,12 @@ function paintObjects(){
  const pd=P.pond;rect(dl,pd.x,pd.y,pd.w,pd.h,'#668980');rect(dl,pd.x+3,pd.y+3,pd.w-6,pd.h-7,'#78a69f');rect(dl,pd.x+10,pd.y+8,25,2,'#c4d1ad');
  const tr=P.trough;rect(dl,tr.x,tr.y,tr.w,tr.h,'#867960');rect(dl,tr.x+3,tr.y+2,tr.w-6,tr.h-5,'#72999a');
  for(const p of P.poles)pole(p.x,p.y,p.nest);
- line(dl,986,162,981,744,'#6e7166',1);
+ // Przewody: dwa tory między końcami poprzeczek, z lekkim zwisem; rysowane w warstwie nadziemnej.
+ const pl=P.poles;
+ for(let i=0;i<pl.length-1;i++)for(const dx of [-8,7]){
+  const x1=pl[i].x+dx,y1=pl[i].y-19,x2=pl[i+1].x+dx,y2=pl[i+1].y-19;
+  dh.strokeStyle='#4f5a4cb0';dh.lineWidth=1;dh.beginPath();dh.moveTo(x1,y1);dh.quadraticCurveTo((x1+x2)/2,(y1+y2)/2+6,x2,y2);dh.stroke();
+ }
  const s=P.sign;rect(dl,s.x+8,s.y+10,3,19,'#7c7155');rect(dl,s.x,s.y,47,13,'#e1d6b0');rect(dl,s.x+1,s.y+1,45,11,'#607c55');rect(dl,s.x+38,s.y+4,5,3,'#eee0b5');
  for(const f of MAP.fences){
   for(const rail of [0,4])line(dl,f.x,f.y0+rail,f.x,f.y1+rail,'#ab9770',1);

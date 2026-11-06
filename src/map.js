@@ -49,9 +49,12 @@ export const PROPS={
  tractor:{x:1290,y:714},
  pallets:{x:1350,y:478,n:6},barrels:{x:1089,y:690,n:3},
  pond:{x:1518,y:778,w:55,h:27},trough:{x:1109,y:792,w:31,h:15},
- poles:[{x:986,y:188,nest:true},{x:981,y:770,nest:false}],
+ poles:[], // generowane niżej wzdłuż drogi głównej
  sign:{x:1004,y:272},laundry:{x:1446,y:735},garden:{x:1480,y:165,w:135,h:242}
 };
+// Linia energetyczna wzdłuż całej drogi głównej, co ~150 px; omija bramę, skrzyżowanie i drogę boczną.
+{const ys=[40,190,300,490,640,790,1090,1240,1390,1540];
+ ys.forEach((y,i)=>{if(roadClearance(986,y)>=10)PROPS.poles.push({x:986,y,nest:i===2})})}
 export const FENCES=[ // płot przy drodze (z bramą na podjeździe)
  {x:1004,y0:193,y1:318},{x:1004,y0:454,y1:903}
 ];

@@ -2,7 +2,7 @@
 // wszyscy mają kolizje i reagują na kombajn gracza (hamują / czekają).
 import {ctx,rect,line,hash,FLD,camera,VIEW,state,RT,clamp,WORLD,LIGHT} from './core.js';
 import {crop} from './world.js';
-import {drawMachineAt,playerObbs,orientedShadow} from './vehicles.js';
+import {drawMachineAt,playerObbs,orientedShadow,drawRotated} from './vehicles.js';
 import {MAP,ROADS} from './map.js';
 import {obb,circle,collide} from './geometry.js';
 
@@ -36,46 +36,57 @@ function pixelPerson(g,x,y,coat='#69865d',step=0){
  rect(g,x-4,y-2,9,6,coat);rect(g,x-4,y-2,9,1,'#ffffff22');                           // barki
  rect(g,x-2,y-4,5,5,'#dbb28c');rect(g,x-2,y-5,5,3,'#67533c');                        // głowa i włosy
 }
-function cow(g,x,y,phase=0,flip=1){
- if(!nearCam(x,y,34))return;
- x=Math.round(x);y=Math.round(y);blob(g,x,y,17,7,7);
- g.save();g.translate(x,y);g.scale(flip,1);
- rect(g,-15,-6,26,12,'#d9cfb7');rect(g,-14,-6,24,11,'#ede4ce');
- rect(g,-11,-5,7,6,'#4d443c');rect(g,-1,0,7,5,'#584d44');rect(g,6,-5,4,4,'#4d443c');rect(g,-14,2,4,3,'#584d44');
- rect(g,10,-4,7,8,'#e3d8c0');rect(g,16,-2,3,5,'#c9a08c');           // głowa i pysk
- rect(g,10,-6,3,2,'#4d443c');rect(g,10,4,3,2,'#4d443c');            // uszy
- rect(g,-19,-1+Math.round(Math.sin(phase)*2),5,2,'#c6bfa9');        // ogon
- g.restore();
+// Zwierzęta i pojazdy: sprite rysowany głową w prawo (zwierzęta) lub do góry (pojazdy) i obracany ostro (drawRotated).
+const COATS=[['#ede4ce','#4d443c','#584d44'],['#e8dcc4','#6b4a35','#7a5640'],['#f1eadb','#3c3834','#4a4540'],['#d9c4a2','#8a5a3b','#9a6a48']];
+function drawCow(g,x,y,heading,coat,grazing,phase){
+ if(!nearCam(x,y,40))return;
+ blob(g,x,y,18,7,7);
+ const [base,p1,p2]=COATS[coat];
+ drawRotated(g,x,y,heading,s=>{
+  rect(s,-15,-6,26,12,'#cfc4aa');rect(s,-14,-6,24,11,base);
+  rect(s,-11,-5,7,6,p1);rect(s,-1,0,7,5,p2);rect(s,6,-5,4,4,p1);rect(s,-14,2,4,3,p2);
+  const hy=grazing?2:0; // głowa przy trawie
+  rect(s,10+hy,-4,7,8,'#e3d8c0');rect(s,16+hy,-2,3,5,'#c9a08c');
+  rect(s,10+hy,-6,3,2,p1);rect(s,10+hy,4,3,2,p1);
+  rect(s,-19,-1+Math.round(Math.sin(phase*2)*2),5,2,'#c6bfa9');
+ });
 }
-function deer(g,x,y,phase=0){
- if(!nearCam(x,y,34))return;
- x=Math.round(x);y=Math.round(y);blob(g,x,y,14,5,6);
- rect(g,x-12,y-4,22,9,'#8f6a47');rect(g,x-11,y-4,20,7,'#a97c55');rect(g,x-8,y-1,14,2,'#93694a');
- rect(g,x+9,y-3,8,6,'#bf9166');rect(g,x+16,y-2,3,4,'#6b523c');
- rect(g,x+10,y-6,3,3,'#91734d');rect(g,x+10,y+4,3,3,'#91734d');
- rect(g,x-15,y-2+Math.round(Math.sin(phase)),4,4,'#e4c9a0');
+function drawDeer(g,x,y,heading,phase,running){
+ if(!nearCam(x,y,40))return;
+ blob(g,x,y,15,5,6);
+ const bob=running?Math.round(Math.sin(phase*1.8)):0;
+ drawRotated(g,x,y+bob*0,heading,s=>{
+  rect(s,-12,-4,22,9,'#8f6a47');rect(s,-11,-4,20,7,'#a97c55');rect(s,-8,-1,14,2,'#93694a');
+  rect(s,9,-3,8,6,'#bf9166');rect(s,16,-2,3,4,'#6b523c');
+  rect(s,10,-6,3,3,'#91734d');rect(s,10,4,3,3,'#91734d');
+  rect(s,-15,-2,4,4,'#e4c9a0');
+  const st=Math.round(Math.sin(phase*(running?3:1.4))*2); // kroki: nogi widoczne po bokach
+  rect(s,-8+st,-6,3,2,'#7a5f46');rect(s,-8-st,5,3,2,'#7a5f46');rect(s,5-st,-6,3,2,'#7a5f46');rect(s,5+st,5,3,2,'#7a5f46');
+ });
 }
 function carTop(g,x,y,col,heading=0){
- if(!nearCam(x,y,58))return;
- orientedShadow(g,x+1,y-1,heading,[[13,24,0]],10,'#37474355');
- g.save();g.translate(Math.round(x),Math.round(y));g.rotate(heading);
- for(let a of [-12,9]){rect(g,a,-15,5,9,'#2e3434');rect(g,a,10,5,10,'#303836')}
- rect(g,-9,-23,22,46,'#414944');rect(g,-8,-24,20,45,col);
- rect(g,-6,-12,16,13,'#668d97');rect(g,-5,-10,14,7,'#a1b6ba');
- rect(g,-6,9,16,7,'#637c81');rect(g,-6,20,5,3,'#d2b889');rect(g,5,20,5,3,'#bf9b71');
- rect(g,-6,-25,5,2,'#ecddb6');rect(g,5,-25,5,2,'#e8d4a8');
- g.restore();
+ if(!nearCam(x,y,64))return;
+ orientedShadow(g,x,y,heading,[[13,27,0]],10,'#37474355');
+ drawRotated(g,x,y,heading,s=>{
+  for(let a of [-13,9]){rect(s,a,-19,5,10,'#2e3434');rect(s,a,12,5,11,'#303836')}
+  rect(s,-11,-27,22,54,'#414944');rect(s,-10,-28,20,53,col);
+  rect(s,-8,-16,16,14,'#668d97');rect(s,-7,-14,14,7,'#a1b6ba');
+  rect(s,-8,12,16,8,'#637c81');rect(s,-8,24,5,3,'#d2b889');rect(s,3,24,5,3,'#bf9b71');
+  rect(s,-8,-29,5,2,'#ecddb6');rect(s,3,-29,5,2,'#e8d4a8');
+ });
 }
 function miniTractor(g,x,y,heading=0,working=false){
- if(!nearCam(x,y,45))return;
- orientedShadow(g,x,y,heading,[[17,27,2]],13,'#3b4a3f55');
- g.save();g.translate(Math.round(x),Math.round(y));g.rotate(heading);
- for(let a of [-17,9]){rect(g,-14,a,7,11,'#343a35');rect(g,10,a,7,11,'#343a35')}
- rect(g,-9,-22,22,46,'#98513b');rect(g,-7,-20,17,22,'#c26440');
- rect(g,-8,4,19,16,'#567d7a');rect(g,-6,6,15,11,'#9cb5a5');
- rect(g,-7,-20,16,4,'#d18851');
- if(working){rect(g,-22,21,43,7,'#7c876c');for(let i=0;i<7;i++)rect(g,-20+i*6,27,3,4,'#9d8c65')}
- g.restore();
+ if(!nearCam(x,y,64))return;
+ orientedShadow(g,x,y,heading,[[17,31,0]],14,'#3b4a3f55');
+ drawRotated(g,x,y,heading,s=>{
+  rect(s,-17,-24,7,13,'#2f3531');rect(s,10,-24,7,13,'#2f3531');   // przednie koła
+  rect(s,-18,4,9,24,'#2f3531');rect(s,9,4,9,24,'#2f3531');         // tylne koła
+  for(let t=6;t<26;t+=5){rect(s,-18,t,3,2,'#6d7468');rect(s,15,t,3,2,'#6d7468')}
+  rect(s,-7,-31,14,30,'#98513b');rect(s,-6,-30,12,26,'#c26440');rect(s,-5,-30,10,3,'#d18851'); // maska
+  rect(s,-10,-3,20,26,'#98513b');rect(s,-9,-2,18,24,'#567d7a');rect(s,-7,0,14,16,'#9cb5a5'); // kabina
+  rect(s,-8,22,16,8,'#b4623f');rect(s,-2,29,4,3,'#444a44');       // tył i zaczep
+  if(working){rect(s,-22,31,43,7,'#7c876c')}
+ });
 }
 function birds(g,t){
  const t0=t*.67;
@@ -93,8 +104,8 @@ function birds(g,t){
 // ───────── pojazdy NPC na grafie dróg ─────────
 // hh/hw: półwymiary obrysu (px), cy: przesunięcie środka obrysu wzdłuż osi pojazdu (+ = do tyłu), lane: odsunięcie od osi jezdni.
 const SPECS={
- car:{speed:34,hw:12,hh:24,cy:-1,lane:14,allow:['road']},
- tractor:{speed:22,hw:16,hh:27,cy:3,lane:17,allow:['road']},
+ car:{speed:34,hw:12,hh:27,cy:0,lane:14,allow:['road']},
+ tractor:{speed:22,hw:17,hh:31,cy:0,lane:18,allow:['road']},
  combine:{speed:14,hw:44,hh:55,cy:-9,lane:6,allow:['road']}
 };
 const TURN_RATE=2.4; // rad/s
@@ -191,6 +202,80 @@ class Person{
  draw(){pixelPerson(ctx,this.x,this.y,this.coat,Math.floor(this.step))}
 }
 
+// ───────── stado krów: stany pasie się / idzie, płynny obrót, trzymanie się razem, omijanie ─────────
+class Cow{
+ constructor(i){
+  const pa=MAP.pasture;this.i=i;this.coat=i%COATS.length;
+  this.x=pa.x0+30+hash(i,1)*(pa.x1-pa.x0-60);this.y=pa.y0+40+hash(i,2)*(pa.y1-pa.y0-80);
+  this.heading=hash(i,3)*6.28;this.v=0;this.state='graze';this.t=2+hash(i,4)*8;this.tx=this.x;this.ty=this.y;this.rng=i*977;this.phase=hash(i,5)*6;
+ }
+ rand(){this.rng=(Math.imul(this.rng,1664525)+1013904223)|0;return((this.rng>>>0)%100000)/100000}
+ pick(herd){
+  const pa=MAP.pasture;
+  if(this.rand()<.5){this.state='graze';this.t=4+this.rand()*10;return}
+  // cel: blisko losowej innej krowy (stado) lub losowy punkt łąki
+  const o=this.rand()<.5?herd[Math.floor(this.rand()*herd.length)]:null;
+  const bx=o?o.x:this.x,by=o?o.y:this.y,r=o?45:110;
+  this.tx=clamp(bx+(this.rand()*2-1)*r,pa.x0+22,pa.x1-22);this.ty=clamp(by+(this.rand()*2-1)*r,pa.y0+24,pa.y1-24);
+  this.state='walk';this.t=30;
+ }
+ update(dt,herd){
+  this.phase+=dt;this.t-=dt;
+  let ax=0,ay=0;
+  for(const o of herd){if(o===this)continue;const dx=this.x-o.x,dy=this.y-o.y,d=Math.hypot(dx,dy);if(d<34&&d>.01){ax+=dx/d*(34-d);ay+=dy/d*(34-d)}}
+  if(this.state==='graze'){this.v+=clamp(0-this.v,-30*dt,30*dt);if(this.t<=0)this.pick(herd)}
+  else{
+   const dx=this.tx-this.x,dy=this.ty-this.y,d=Math.hypot(dx,dy);
+   if(d<8||this.t<=0){this.state='graze';this.t=3+this.rand()*8}
+   else{const want=Math.atan2(dy+ay*2,dx+ax*2);const df=angDiff(this.heading,want);this.heading+=clamp(df,-1.3*dt,1.3*dt);this.v+=clamp(9-this.v,-20*dt,12*dt)}
+  }
+  const pa=MAP.pasture;
+  this.x=clamp(this.x+Math.cos(this.heading)*this.v*dt+ax*dt*.6,pa.x0+16,pa.x1-16);
+  this.y=clamp(this.y+Math.sin(this.heading)*this.v*dt+ay*dt*.6,pa.y0+16,pa.y1-16);
+ }
+ draw(){drawCow(ctx,this.x,this.y,this.heading,this.coat,this.state==='graze',this.phase)}
+}
+// ───────── jelenie: grupy wędrują po trasach przez otwarte pola, żerują, a przed maszyną uciekają ─────────
+class DeerGroup{
+ constructor(route,n,seed){
+  this.route=route;this.seed=seed;this.idx=0;this.dir=1;this.waitT=2+hash(seed,1)*5;this.running=false;
+  this.members=Array.from({length:n},(_,k)=>({ox:(hash(seed,k+2)-.5)*34,oy:(hash(seed,k+9)-.5)*34,x:route[0][0],y:route[0][1],heading:0,phase:hash(seed,k)*6}));
+  this.lead={x:route[0][0],y:route[0][1],heading:0};this.turns=0;
+  for(const m of this.members){m.x+=m.ox;m.y+=m.oy}
+ }
+ update(dt){
+  const L=this.lead,pd=Math.hypot(state.x-L.x,state.y-L.y);
+  const scared=pd<130||(this.running&&pd<210);
+  if(scared&&!this.running){ // uciekaj od maszyny: wybierz koniec trasy dalej od gracza
+   this.running=true;this.waitT=0;
+   const a=this.route[Math.max(0,Math.min(this.route.length-1,this.idx))],b=this.route[Math.max(0,Math.min(this.route.length-1,this.idx+this.dir))];
+   const far=this.route[0],end=this.route[this.route.length-1];
+   const target=Math.hypot(state.x-far[0],state.y-far[1])>Math.hypot(state.x-end[0],state.y-end[1])?0:this.route.length-1;
+   this.dir=target>=this.idx?1:-1;
+  }
+  if(!scared)this.running=false;
+  if(this.waitT>0&&!this.running){this.waitT-=dt;for(const m of this.members)m.phase+=dt*.4;return}
+  const ni=this.idx+this.dir;
+  if(ni<0||ni>=this.route.length){this.dir=-this.dir;this.waitT=6+hash(this.seed,this.turns++)*10;return}
+  const tg=this.route[ni],dx=tg[0]-L.x,dy=tg[1]-L.y,d=Math.hypot(dx,dy),sp=(this.running?48:15)*dt;
+  L.heading=Math.atan2(dy,dx);
+  if(d<=sp){L.x=tg[0];L.y=tg[1];this.idx=ni;if(!this.running&&hash(this.seed,this.turns++)>.45)this.waitT=5+hash(this.seed,this.turns)*9}
+  else{L.x+=dx/d*sp;L.y+=dy/d*sp}
+  for(const m of this.members){
+   const tx=L.x+m.ox,ty=L.y+m.oy,mx=tx-m.x,my=ty-m.y,md=Math.hypot(mx,my);
+   if(md>.5){m.heading+=clamp(angDiff(m.heading,Math.atan2(my,mx)),-4*dt,4*dt);const st=Math.min(md,(this.running?52:17)*dt);m.x+=mx/md*st;m.y+=my/md*st}
+   m.phase+=dt*(this.running?9:4);
+  }
+ }
+ draw(){for(const m of this.members)drawDeer(ctx,m.x,m.y,m.heading,m.phase,this.running)}
+}
+const herd=Array.from({length:9},(_,i)=>new Cow(i));
+const deerGroups=[
+ new DeerGroup([[268,78],[520,64],[780,92]],2,11),          // żyto na północ od pola
+ new DeerGroup([[200,1210],[430,1290],[640,1190],[860,1260]],3,23), // ściernisko na południu
+ new DeerGroup([[1045,1370],[1230,1290],[1420,1230]],2,37)  // zielone pole na południowym wschodzie
+];
+
 const walkers=[
  new Walker('car','nS','jX',420,{color:'#8c9b95',seed:3}),
  new Walker('car','nN','jD',150,{color:'#a4684f',seed:5}),
@@ -204,6 +289,8 @@ const people=[
 
 // Wywoływane z kroku symulacji.
 function updateLife(dt){
+ for(const c of herd)c.update(dt,herd);
+ for(const d of deerGroups)d.update(dt);
  for(const w of walkers)w.update(dt,walkers,people);
  for(const p of people)p.update(dt);
 }
@@ -214,17 +301,12 @@ function dynamicColliders(){
  for(const p of people)out.push({...p.shape,id:'person'});
  return out;
 }
-function lifeInfo(){return{time:RT.lifeT,vehicles:walkers.map(w=>({kind:w.kind,x:w.pos[0],y:w.pos[1],v:w.v,blocked:w.blocked,edge:w.from+'>'+w.to})),people:people.map(p=>({x:p.x,y:p.y})),animals:5}}
+function lifeInfo(){return{time:RT.lifeT,vehicles:walkers.map(w=>({kind:w.kind,x:w.pos[0],y:w.pos[1],v:w.v,blocked:w.blocked,edge:w.from+'>'+w.to})),people:people.map(p=>({x:p.x,y:p.y})),animals:herd.length+deerGroups.reduce((n,g)=>n+g.members.length,0),cows:herd.map(c=>({x:Math.round(c.x),y:Math.round(c.y),s:c.state})),deer:deerGroups.map(g=>g.members.map(m=>[Math.round(m.x),Math.round(m.y)]))}}
 
 function drawVillageLife(){
- const t=RT.lifeT,pa=MAP.pasture;
- for(let i=0;i<4;i++){
-  const x=clamp(68+(i%2)*68+Math.sin(t*.13+i*2)*11,pa.x0+20,pa.x1-20);
-  const y=clamp(405+Math.floor(i/2)*235+Math.cos(t*.09+i*1.7)*12,pa.y0+20,pa.y1-20);
-  cow(ctx,x,y,t*.8+i*4,Math.cos(t*.13+i*2)>=0?1:-1);
- }
- const deerCycle=t%66;
- if(deerCycle<22)deer(ctx,44+deerCycle*7.7,1018+Math.sin(deerCycle*.3)*7,deerCycle*4);
+ const t=RT.lifeT;
+ for(const c of herd)c.draw();
+ for(const d of deerGroups)d.draw();
  for(const p of people)p.draw();
  for(const w of walkers)w.draw();
  birds(ctx,t);
