@@ -1,6 +1,7 @@
 // Sylwetka kombajnu i wspólny renderer maszyn.
 // Główny kombajn i kombajn NPC korzystają z tego samego sprite'a i skali.
 import {ctx,rect,state,COMBINE_SCALE,RT} from './core.js';
+import {obb} from './geometry.js';
 const combine=document.createElement('canvas');combine.width=120;combine.height=132;let cg=combine.getContext('2d');cg.imageSmoothingEnabled=false;
 function drawCombine(){cg.clearRect(0,0,120,132);cg.save();cg.translate(60,69); // heading-up local coordinates
 // No fixed wheels in the body sprite. The ONLY wheels are drawn under the machine
@@ -58,6 +59,12 @@ function drawMachineAt(g,x,y,angle,steer,travel,working,scale=COMBINE_SCALE){
  rect(g,-2,-66,5,2,working?'#e7d06f':'#71604b');
  g.restore();
 }
+// Obrys kolizji kombajnu: kabina z przednią osią, tył z silnikiem i heder (obrócone prostokąty w świecie).
+function playerObbs(){
+ const k=COMBINE_SCALE,a=state.angle;
+ const [fx,fy]=worldOffset(0,-22.5*k),[rx,ry]=worldOffset(0,23*k),[hx,hy]=worldOffset(0,-54*k);
+ return [obb(fx,fy,32*k,22.5*k,a),obb(rx,ry,26*k,23*k,a),obb(hx,hy,44*k,9*k,a)];
+}
 function drawHarvester(){drawMachineAt(ctx,state.x,state.y,state.angle,state.steer,RT.wheelTravel,state.tool)}
 
-export {worldOffset,drawMachineAt,drawHarvester};
+export {worldOffset,drawMachineAt,drawHarvester,playerObbs};
